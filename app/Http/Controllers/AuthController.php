@@ -20,6 +20,7 @@ class AuthController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|min:6',
             'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
@@ -35,10 +36,10 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'phone' => $request->phone,
-            'role' => 'user'
-        ]);
+            'address' => $request->address,
+            'role' => 'user',
 
-        // $token = $user->createToken('auth_token')->plainTextToken;
+        ]);
 
         return response()->json([
             'success' => true,

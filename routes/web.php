@@ -7,6 +7,9 @@ use App\Http\Controllers\RouteController;
 use App\Http\Controllers\TripController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\BusController;
+use App\Http\Controllers\PickupPointController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -34,9 +37,35 @@ Route::get('/routes/{routeId}/pickup-points', [BookingController::class, 'getPic
 
 // Protected routes - cần đăng nhập
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/change-password', [AuthController::class, 'changePassword'])->name('changePassword');
-    Route::get('/profile', [UserController::class, 'profile'])->name('profile'); //lấy thong tin user
-    Route::put('/profile', [UserController::class, 'updateProfile'])->name('updateProfile'); //cập nhật ttt user
+    Route::post('/change-password', [AuthController::class, 'changePassword'])->name('changePassword'); //thay đổi mk user
+    // ========== QUẢN LÝ USERS (Admin/Manager) ==========
+    // Danh sách users (có thêm phân trang, filter)
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::get('/users/{id}', [UserController::class, 'show'])->name('users.show'); // Lấy thông tin chi tiết 1 user theo ID
+    Route::post('/users', [UserController::class, 'store'])->name('users.store'); // Tạo user mới
+    Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update'); // Cập nhật user theo ID
+    Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy'); // Xóa user theo ID
+
+    // ========== QUẢN LÝ BUSES (Admin/Manager) ==========
+    Route::get('/buses', [BusController::class, 'index'])->name('buses.index');
+    Route::get('/buses/{id}', [BusController::class, 'show'])->name('buses.show'); // Lấy thông tin chi tiết 1 bus theo ID
+    Route::post('/buses', [BusController::class, 'store'])->name('buses.store'); // Tạo bus mới
+    Route::put('/buses/{id}', [BusController::class, 'update'])->name('buses.update'); // Cập nhật bus theo ID
+    Route::delete('/buses/{id}', [BusController::class, 'destroy'])->name('buses.destroy'); // Xóa bus theo ID
+
+    // ========== QUẢN LÝ ROUTE (Admin/Manager) ==========
+    Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
+    Route::get('/routes/{id}', [RouteController::class, 'show'])->name('routes.show'); // Lấy thông tin chi tiết 1 tuyến đường theo ID
+    Route::post('/routes', [RouteController::class, 'store'])->name('routes.store'); // Tạo tuyến đường mới
+    Route::put('/routes/{id}', [RouteController::class, 'update'])->name('routes.update'); // Cập nhật tuyến đường theo ID
+    Route::delete('/routes/{id}', [RouteController::class, 'destroy'])->name('routes.destroy'); // Xóa tuyến đường theo ID
+
+    // ========== QUẢN LÝ ĐIỂM ĐÓN (Admin/Manager) ==========
+    Route::get('/pickup-points', [PickupPointController::class, 'index'])->name('pickup-points.index');
+    Route::get('/pickup-points/{id}', [PickupPointController::class, 'show'])->name('pickup-points.show'); // Lấy thông tin chi tiết 1 điểm đón theo ID
+    Route::post('/pickup-points', [PickupPointController::class, 'store'])->name('pickup-points.store'); // Tạo điểm đón mới
+    Route::put('/pickup-points/{id}', [PickupPointController::class, 'update'])->name('pickup-points.update'); // Cập nhật điểm đón theo ID
+    Route::delete('/pickup-points/{id}', [PickupPointController::class, 'destroy'])->name('pickup-points.destroy'); // Xóa điểm đón theo ID
 
     //Booking
     Route::post('/bookings', [BookingController::class, 'store']); // đặt vé 

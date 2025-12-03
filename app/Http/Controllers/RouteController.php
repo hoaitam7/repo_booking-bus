@@ -81,4 +81,152 @@ class RouteController extends Controller
             'data' => $routes
         ]);
     }
+
+    //CURD Route
+    /**
+     * Lấy danh sách tất cả các tuyến đường
+     */
+    public function index(): JsonResponse
+    {
+        $routes = Route::all();
+
+        return response()->json([
+            'success' => true,
+            'data' => $routes
+        ]);
+    }
+
+    /**
+     * Lấy thông tin chi tiết 1 tuyến đường theo ID
+     */
+    public function show($id): JsonResponse
+    {
+        $route = Route::find($id);
+
+        if (!$route) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy tuyến đường'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $route
+        ]);
+    }
+
+    /**
+     * Tạo tuyến đường mới
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'from_city' => 'required|string|max:255',
+            'to_city' => 'required|string|max:255',
+            'distance' => 'nullable|numeric|min:0',
+            'duration' => 'nullable|string|max:50',
+            'price' => 'required|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $route = Route::create([
+            'from_city' => $request->from_city,
+            'to_city' => $request->to_city,
+            'distance' => $request->distance,
+            'duration' => $request->duration,
+            'price' => $request->price,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tạo tuyến đường thành công',
+            'data' => $route
+        ], 201);
+    }
+
+    /**
+     * Cập nhật tuyến đường theo ID
+     */
+    public function update(Request $request, $id): JsonResponse
+    {
+        $route = Route::find($id);
+
+        if (!$route) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy tuyến đường'
+            ], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'from_city' => 'sometimes|required|string|max:255',
+            'to_city' => 'sometimes|required|string|max:255',
+            'distance' => 'nullable|numeric|min:0',
+            'duration' => 'nullable|string|max:50',
+            'price' => 'sometimes|required|numeric|min:0',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $route->update([
+            'from_city' => $request->has('from_city') ? $request->from_city : $route->from_city,
+            'to_city' => $request->has('to_city') ? $request->to_city : $route->to_city,
+            'distance' => $request->has('distance') ? $request->distance : $route->distance,
+            'duration' => $request->has('duration') ? $request->duration : $route->duration,
+            'price' => $request->has('price') ? $request->price : $route->price,
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cập nhật tuyến đường thành công',
+            'data' => $route
+        ]);
+    }
+
+    /**
+     * Xóa tuyến đường theo ID
+     */
+    public function destroy($id): JsonResponse
+    {
+        $route = Route::find($id);
+
+        if (!$route) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy tuyến đường'
+            ], 404);
+        }
+
+        // Kiểm tra nếu có chuyến đi liên quan
+        if ($route->trips && $route->trips->count() > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể xóa tuyến đường vì có chuyến đi liên quan'
+            ], 400);
+        }
+
+        $route->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Xóa tuyến đường thành công'
+        ]);
+    }
 }
