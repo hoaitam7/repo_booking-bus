@@ -63,7 +63,7 @@ class TripController extends Controller
             $query->where('departure_time', '>=', now())
                 ->where('status', 'scheduled');
         }
-        $trips = $query->orderBy('departure_time', 'asc')->paginate(20);
+        $trips = $query->orderBy('departure_time', 'asc')->paginate(10);
         return response()->json([
             'success' => true,
             'data' => $trips
@@ -112,66 +112,66 @@ class TripController extends Controller
      * TẠO NHIỀU CHUYẾN CÙNG LÚC (quan trọng)
      * Admin chỉ cần tạo 1 lần cho nhiều ngày
      */
-    public function bulkCreate(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'route_id' => 'required|exists:routes,id',
-            'bus_id' => 'required|exists:buses,id',
-            'departure_time' => 'required|date_format:H:i', // Giờ cố định: 06:00
-            'ticket_price' => 'required|numeric|min:0',
-            'start_date' => 'required|date|after_or_equal:today',
-            'end_date' => 'required|date|after:start_date',
-            'repeat_days' => 'required|array',
-            'repeat_days.*' => 'integer|min:1|max:7', // 1=CN, 7=T7
-        ]);
+    // public function bulkCreate(Request $request): JsonResponse
+    // {
+    //     $validator = Validator::make($request->all(), [
+    //         'route_id' => 'required|exists:routes,id',
+    //         'bus_id' => 'required|exists:buses,id',
+    //         'departure_time' => 'required|date_format:H:i', // Giờ cố định: 06:00
+    //         'ticket_price' => 'required|numeric|min:0',
+    //         'start_date' => 'required|date|after_or_equal:today',
+    //         'end_date' => 'required|date|after:start_date',
+    //         'repeat_days' => 'required|array',
+    //         'repeat_days.*' => 'integer|min:1|max:7', // 1=CN, 7=T7
+    //     ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Dữ liệu không hợp lệ',
-                'errors' => $validator->errors()
-            ], 422);
-        }
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Dữ liệu không hợp lệ',
+    //             'errors' => $validator->errors()
+    //         ], 422);
+    //     }
 
-        // Lấy thông tin xe để biết số ghế
-        $bus = Bus::find($request->bus_id);
-        $createdTrips = [];
+    //     // Lấy thông tin xe để biết số ghế
+    //     $bus = Bus::find($request->bus_id);
+    //     $createdTrips = [];
 
-        $start = Carbon::parse($request->start_date);
-        $end = Carbon::parse($request->end_date);
+    //     $start = Carbon::parse($request->start_date);
+    //     $end = Carbon::parse($request->end_date);
 
-        // Vòng lặp qua từng ngày
-        while ($start->lte($end)) {
-            // Kiểm tra ngày trong tuần
-            if (in_array($start->dayOfWeekIso, $request->repeat_days)) {
-                // Tạo datetime = ngày + giờ cố định
-                $departureDateTime = $start->copy()
-                    ->setTimeFromTimeString($request->departure_time);
+    //     // Vòng lặp qua từng ngày
+    //     while ($start->lte($end)) {
+    //         // Kiểm tra ngày trong tuần
+    //         if (in_array($start->dayOfWeekIso, $request->repeat_days)) {
+    //             // Tạo datetime = ngày + giờ cố định
+    //             $departureDateTime = $start->copy()
+    //                 ->setTimeFromTimeString($request->departure_time);
 
-                // Chỉ tạo nếu thời gian ở tương lai
-                if ($departureDateTime->greaterThan(now())) {
-                    $trip = Trip::create([
-                        'route_id' => $request->route_id,
-                        'bus_id' => $request->bus_id,
-                        'departure_time' => $departureDateTime,
-                        'ticket_price' => $request->ticket_price,
-                        'available_seats' => $bus->total_seats, // Lấy từ bảng buses
-                        'status' => 'scheduled',
-                    ]);
+    //             // Chỉ tạo nếu thời gian ở tương lai
+    //             if ($departureDateTime->greaterThan(now())) {
+    //                 $trip = Trip::create([
+    //                     'route_id' => $request->route_id,
+    //                     'bus_id' => $request->bus_id,
+    //                     'departure_time' => $departureDateTime,
+    //                     'ticket_price' => $request->ticket_price,
+    //                     'available_seats' => $bus->total_seats, // Lấy từ bảng buses
+    //                     'status' => 'scheduled',
+    //                 ]);
 
-                    $createdTrips[] = $trip;
-                }
-            }
+    //                 $createdTrips[] = $trip;
+    //             }
+    //         }
 
-            $start->addDay();
-        }
+    //         $start->addDay();
+    //     }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Đã tạo ' . count($createdTrips) . ' chuyến đi',
-            'data' => $createdTrips
-        ], 201);
-    }
+    //     return response()->json([
+    //         'success' => true,
+    //         'message' => 'Đã tạo ' . count($createdTrips) . ' chuyến đi',
+    //         'data' => $createdTrips
+    //     ], 201);
+    // }
     /**
      * Cập nhật chuyến đi
      */

@@ -9,6 +9,7 @@ use App\Http\Controllers\SearchController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BusController;
 use App\Http\Controllers\PickupPointController;
+use App\Http\Controllers\InvoiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,9 +68,26 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/pickup-points/{id}', [PickupPointController::class, 'update'])->name('pickup-points.update'); // Cập nhật điểm đón theo ID
     Route::delete('/pickup-points/{id}', [PickupPointController::class, 'destroy'])->name('pickup-points.destroy'); // Xóa điểm đón theo ID
 
-    //Booking
-    Route::post('/bookings', [BookingController::class, 'store']); // đặt vé 
-    // Route::get('/bookings', [BookingController::class, 'index']);
-    // Route::get('/bookings/{id}', [BookingController::class, 'show']);
-    // Route::put('/bookings/{id}/cancel', [BookingController::class, 'cancel']);
+    // ========== QUẢN LÝ CHUYẾN XE (Admin/Manager) ==========
+    Route::get('/trips', [TripController::class, 'index'])->name('trips.index'); // Lấy danh sách chuyến xe
+    Route::get('/trips/{id}', [TripController::class, 'show'])->name('trips.show'); // Lấy thông tin chi tiết 1 chuyến xe theo ID
+    Route::post('/trips', [TripController::class, 'store'])->name('trips.store'); // Tạo chuyến xe mới (đơn lẻ)
+    // Route::post('/trips/bulk', [TripController::class, 'bulkCreate'])->name('trips.bulk'); // Tạo nhiều chuyến xe cùng lúc
+    Route::put('/trips/{id}', [TripController::class, 'update'])->name('trips.update'); // Cập nhật chuyến xe theo ID
+    Route::delete('/trips/{id}', [TripController::class, 'destroy'])->name('trips.destroy'); // Xóa chuyến xe theo ID
+
+    // ========== BOOKING ROUTES ==========
+    Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index'); // Lấy danh sách booking
+    Route::get('/bookings/{id}', [BookingController::class, 'show'])->name('bookings.show'); // Lấy thông tin chi tiết 1 booking theo ID
+    Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store'); // Tạo booking mới
+    Route::put('/bookings/{id}', [BookingController::class, 'update'])->name('bookings.update'); // Cập nhật booking theo ID
+    Route::delete('/bookings/{id}', [BookingController::class, 'destroy'])->name('bookings.destroy'); // Xóa booking theo ID
+
+    // ========== INVOICE ROUTES ==========
+    Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index'); // Lấy danh sách invoice
+    Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoices.show'); // Lấy thông tin chi tiết 1 invoice theo ID
+    Route::put('/invoices/{id}', [InvoiceController::class, 'update'])->name('invoices.update'); // Cập nhật invoice theo ID
+    Route::get('/invoices/{id}/download', [InvoiceController::class, 'download'])->name('invoices.download'); // Tải invoice
+
+
 });
