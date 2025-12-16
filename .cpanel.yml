@@ -7,13 +7,6 @@ deployment:
     - /bin/cp -R * $DEPLOYPATH
     # 3. Chuyển thư mục làm việc sang thư mục đích
     - cd $DEPLOYPATH
-    # 4. Chạy các lệnh Laravel/Composer
-    - /usr/local/bin/php /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction
-    - /usr/local/bin/php artisan migrate --force
-    - /usr/local/bin/php artisan cache:clear
-    - /usr/local/bin/php artisan config:cache
-    - /usr/local/bin/php artisan route:cache
-    - /usr/local/bin/php artisan view:cache
     # 5. Cấp quyền (Đã đúng)
     - chmod -R 755 $DEPLOYPATH/storage
     - chmod -R 755 $DEPLOYPATH/bootstrap/cache
