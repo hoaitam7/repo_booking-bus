@@ -34,6 +34,8 @@ Route::post('/search-routes', [RouteController::class, 'searchRoutes']); //lịc
 Route::get('/trips/{tripId}', [TripController::class, 'show']);  //chi tiết một chuyến xe (phục vụ phần booking)
 Route::get('/trips/{tripId}/seats', [BookingController::class, 'getAvailableSeats']); //Lấy danh sách ghế trống của chuyến xe có ID = tripId
 Route::get('/routes/{routeId}/pickup-points', [BookingController::class, 'getPickupPoints']); //Lấy danh sách điểm đón của tuyến xe có ID = routeId
+Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
+
 
 
 // Protected routes - cần đăng nhập
@@ -55,7 +57,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/buses/{id}', [BusController::class, 'destroy'])->name('buses.destroy'); // Xóa bus theo ID
 
     // ========== QUẢN LÝ ROUTE (Admin/Manager) ==========
-    Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
     Route::get('/routes/{id}', [RouteController::class, 'show'])->name('routes.show'); // Lấy thông tin chi tiết 1 tuyến đường theo ID
     Route::post('/routes', [RouteController::class, 'store'])->name('routes.store'); // Tạo tuyến đường mới
     Route::put('/routes/{id}', [RouteController::class, 'update'])->name('routes.update'); // Cập nhật tuyến đường theo ID

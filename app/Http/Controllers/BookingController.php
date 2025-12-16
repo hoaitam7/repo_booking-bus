@@ -106,14 +106,34 @@ class BookingController extends Controller
         }
 
         // Kiểm tra số ghế còn trống
-        $requestedSeats = explode(',', $request->seat_numbers);
-        $seatCount = count($requestedSeats);
+        $requestedSeats = explode(',', $request->seat_numbers); //['A1', 'A2','A4'];  // A3, A4, A5
+        $seatCount = count($requestedSeats); //3
 
-        if ($seatCount > $trip->available_seats) {
+        if ($seatCount > $trip->available_seats) { //43 > 40 
             return response()->json([
                 'success' => false,
                 'message' => 'Số ghế bạn chọn vượt quá số ghế còn trống'
             ], 400);
+        }
+
+        // Lấy danh sách các ghế đã được đặt cho chuyến xe này
+        $alreadyBookedSeats = Booking::where('trip_id', $request->trip_id)
+            ->whereIn('status', ['confirmed', 'pending']) // Chỉ xem các booking đã xác nhận hoặc đang chờ
+            ->pluck('seat_numbers')
+            ->flatMap(function ($seats) {
+                return explode(',', $seats);
+            })
+            ->toArray();
+        // Tìm các ghế trùng lặp
+        $duplicateSeats = array_intersect($requestedSeats, $alreadyBookedSeats);
+
+        if (!empty($duplicateSeats)) {
+            // Nếu có ghế trùng lặp, trả về lỗi
+            return response()->json([
+                'success' => false,
+                'message' => 'Các ghế sau đã được đặt: ' . implode(', ', $duplicateSeats),
+                'booked_seats' => $duplicateSeats
+            ], 409); // Sử dụng mã 409 Conflict hoặc 400 Bad Request
         }
 
         // Kiểm tra điểm đón có thuộc tuyến của chuyến xe không
@@ -468,38 +488,38 @@ class BookingController extends Controller
     /**
      * Lấy danh sách điểm đón của tuyến xe
      */
-    public function getPickupPoints($routeId): JsonResponse
-    {
-        $route = Route::find($routeId);
+    // public function getPickupPoints($routeId): JsonResponse
+    // {
+    //     $route = Route::find($routeId);
 
-        if (!$route) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tuyến đường không tồn tại'
-            ], 404);
-        }
+    //     if (!$route) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Tuyến đường không tồn tại'
+    //         ], 404);
+    //     }
 
-        $pickupPoints = PickupPoint::where('route_id', $routeId)
-            ->orderBy('name')
-            ->get(['id', 'route_id', 'name', 'address']);
+    //     $pickupPoints = PickupPoint::where('route_id', $routeId)
+    //         ->orderBy('name')
+    //         ->get(['id', 'route_id', 'name', 'address']);
 
-        if ($pickupPoints->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Không tìm thấy điểm đón cho tuyến đường này'
-            ], 404);
-        }
+    //     if ($pickupPoints->isEmpty()) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Không tìm thấy điểm đón cho tuyến đường này'
+    //         ], 404);
+    //     }
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'route_info' => [
-                    'id' => $route->id,
-                    'from_city' => $route->from_city,
-                    'to_city' => $route->to_city
-                ],
-                'pickup_points' => $pickupPoints
-            ]
-        ]);
-    }
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' => [
+    //             'route_info' => [
+    //                 'id' => $route->id,
+    //                 'from_city' => $route->from_city,
+    //                 'to_city' => $route->to_city
+    //             ],
+    //             'pickup_points' => $pickupPoints
+    //         ]
+    //     ]);
+    // }
 }
