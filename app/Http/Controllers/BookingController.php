@@ -488,38 +488,38 @@ class BookingController extends Controller
     /**
      * Lấy danh sách điểm đón của tuyến xe
      */
-    // public function getPickupPoints($routeId): JsonResponse
-    // {
-    //     $route = Route::find($routeId);
+    public function getPickupPoints($routeId): JsonResponse
+    {
+        $route = Route::find($routeId);
 
-    //     if (!$route) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Tuyến đường không tồn tại'
-    //         ], 404);
-    //     }
+        if (!$route) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tuyến đường không tồn tại'
+            ], 404);
+        }
 
-    //     $pickupPoints = PickupPoint::where('route_id', $routeId)
-    //         ->orderBy('name')
-    //         ->get(['id', 'route_id', 'name', 'address']);
+        $pickupPoints = PickupPoint::where('route_id', $routeId)
+            ->orderBy('name')
+            ->get(['id', 'route_id', 'name', 'address']);
 
-    //     if ($pickupPoints->isEmpty()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Không tìm thấy điểm đón cho tuyến đường này'
-    //         ], 404);
-    //     }
+        if ($pickupPoints->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không tìm thấy điểm đón cho tuyến đường này'
+            ], 404);
+        }
 
-    //     return response()->json([
-    //         'success' => true,
-    //         'data' => [
-    //             'route_info' => [
-    //                 'id' => $route->id,
-    //                 'from_city' => $route->from_city,
-    //                 'to_city' => $route->to_city
-    //             ],
-    //             'pickup_points' => $pickupPoints
-    //         ]
-    //     ]);
-    // }
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'route_info' => [
+                    'id' => $route->id,
+                    'from_city' => $route->from_city,
+                    'to_city' => $route->to_city
+                ],
+                'pickup_points' => $pickupPoints
+            ]
+        ]);
+    }
 }
