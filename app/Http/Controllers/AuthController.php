@@ -77,18 +77,19 @@ class AuthController extends Controller
             ], 401);
         }
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        // Tạo token và tách lấy phần plain text sau dấu "|"
+        $plainToken = $user->createToken('auth_token')->plainTextToken;
+        $token = explode('|', $plainToken)[1] ?? $plainToken;
 
         return response()->json([
             'success' => true,
             'message' => 'Đăng nhập thành công',
             'data' => [
                 'user' => $user,
-                'access_token' => $token
+                'access_token' => $token // Lúc này chỉ còn chuỗi token sạch
             ]
         ]);
     }
-
     /**
      * Đổi mật khẩu
      */

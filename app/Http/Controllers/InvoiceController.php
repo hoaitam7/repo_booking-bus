@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 class InvoiceController extends Controller
@@ -112,5 +114,62 @@ class InvoiceController extends Controller
             'message' => 'Cập nhật hóa đơn thành công',
             'data' => $invoice
         ]);
+    }
+
+
+    /**
+     * Tải hóa đơn PDF
+     */
+    public function download($id)
+    {
+        // Lấy invoice với các quan hệ cần thiết - DÙNG ĐÚNG TÊN CỘT TRONG DB
+        $invoice = Invoice::with([
+            'booking.user',
+            'booking.trip.route', // Load thêm route để lấy thông tin tuyến đường
+            'booking.pickupPoint'
+        ])->find($id);
+
+        if (!$invoice) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hóa đơn không tồn tại'
+            ], 404);
+        }
+
+        // Kiểm tra quyền
+        if (
+            Auth::check() && Auth::user()->role !== 'admin' &&
+            $invoice->booking->user_id != Auth::id()
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không có quyền truy cập'
+            ], 403);
+        }
+
+        // Dữ liệu cho view PDF - SỬA THEO ĐÚNG DATA CÓ SẴN
+        $data = [
+            'invoice' => $invoice,
+            'company' => [
+                'name' => 'HỆ THỐNG ĐẶT VÉ XE',
+                'address' => '123 Đường ABC, Quận 1, TP.HCM',
+                'phone' => '(028) 1234 5678',
+                'email' => 'info@busticket.com',
+                'tax_code' => '0123456789',
+            ],
+            'issue_date' => Carbon::now()->format('d/m/Y'),
+            'due_date' => Carbon::parse($invoice->created_at)->addDays(7)->format('d/m/Y'),
+        ];
+
+        // Tạo PDF từ view
+        $pdf = PDF::loadView('pdf.invoice', $data)
+            ->setPaper('A4', 'portrait');
+
+
+        // Sửa tên file theo đúng cột trong DB: invoice_number thay vì invoice_code
+        $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
+
+        // Download file
+        return $pdf->download($filename);
     }
 }

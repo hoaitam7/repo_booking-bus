@@ -35,6 +35,7 @@ Route::get('/trips/{tripId}', [TripController::class, 'show']);  //chi tiết m�
 Route::get('/trips/{tripId}/seats', [BookingController::class, 'getAvailableSeats']); //Lấy danh sách ghế trống của chuyến xe có ID = tripId
 Route::get('/routes/{routeId}/pickup-points', [BookingController::class, 'getPickupPoints']); //Lấy danh sách điểm đón của tuyến xe có ID = routeId
 Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
+Route::get('/invoices/{id}/download', [InvoiceController::class, 'download'])->name('invoices.download'); // Tải invoice
 
 
 
@@ -88,7 +89,4 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index'); // Lấy danh sách invoice
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoices.show'); // Lấy thông tin chi tiết 1 invoice theo ID
     Route::put('/invoices/{id}', [InvoiceController::class, 'update'])->name('invoices.update'); // Cập nhật invoice theo ID
-    Route::get('/invoices/{id}/download', [InvoiceController::class, 'download'])->name('invoices.download'); // Tải invoice
-
-
 });
