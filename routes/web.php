@@ -10,6 +10,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BusController;
 use App\Http\Controllers\PickupPointController;
 use App\Http\Controllers\InvoiceController;
+use Illuminate\Support\Facades\Artisan;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +26,22 @@ use App\Http\Controllers\InvoiceController;
 Route::get('/', function () {
     return view('welcome');
 });
+
+
+Route::get('/clear', function () {
+    // Xóa toàn bộ các loại cache cấu hình và class
+    Artisan::call('config:clear');
+    Artisan::call('cache:clear');
+    Artisan::call('route:clear');
+    Artisan::call('view:clear');
+
+    // Nếu bạn đã sửa file bootstrap/app.php hoặc config/app.php
+    // lệnh này sẽ ép Laravel tạo lại danh sách Service Provider mới
+    Artisan::call('clear-compiled');
+
+    return "He thong da xoa cache va toi uu hoa xong!";
+});
+
 // Public routes - không cần đăng nhập
 Route::post('/register', [AuthController::class, 'register'])->name('register'); //rq đăng ký
 Route::post('/login', [AuthController::class, 'login'])->name('login'); //rq đăng nhập
@@ -36,6 +53,7 @@ Route::get('/trips/{tripId}/seats', [BookingController::class, 'getAvailableSeat
 Route::get('/routes/{routeId}/pickup-points', [BookingController::class, 'getPickupPoints']); //Lấy danh sách điểm đón của tuyến xe có ID = routeId
 Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
 Route::get('/invoices/{id}/download', [InvoiceController::class, 'download'])->name('invoices.download'); // Tải invoice
+Route::get('/trips', [TripController::class, 'index'])->name('trips.index'); // Lấy danh sách chuyến xe
 
 
 
@@ -71,7 +89,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/pickup-points/{id}', [PickupPointController::class, 'destroy'])->name('pickup-points.destroy'); // Xóa điểm đón theo ID
 
     // ========== QUẢN LÝ CHUYẾN XE (Admin/Manager) ==========
-    Route::get('/trips', [TripController::class, 'index'])->name('trips.index'); // Lấy danh sách chuyến xe
+
     Route::get('/trips/{id}', [TripController::class, 'show'])->name('trips.show'); // Lấy thông tin chi tiết 1 chuyến xe theo ID
     Route::post('/trips', [TripController::class, 'store'])->name('trips.store'); // Tạo chuyến xe mới (đơn lẻ)
     // Route::post('/trips/bulk', [TripController::class, 'bulkCreate'])->name('trips.bulk'); // Tạo nhiều chuyến xe cùng lúc
