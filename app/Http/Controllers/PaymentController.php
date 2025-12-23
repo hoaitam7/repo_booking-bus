@@ -24,29 +24,28 @@ class PaymentController extends Controller
 
     public function createPaymentLink(Request $request)
     {
-        $domain = env('APP_URL'); // Lấy domain từ .env (vd: http://localhost:8000)
+        // Lấy domain Frontend từ .env để Redirect sau khi thanh toán xong
+        $domain = env('APP_FRONTEND_URL', 'https://hoaitam123.xyz');
 
+        // Dữ liệu lấy từ React gửi lên (orderCode, amount, ...)
         $data = [
-            "orderCode" => intval(substr(strval(microtime(true) * 10000), -6)),
-            "amount" => 2000,
-            "description" => "Thanh toán đơn hàng",
-            "items" => [
-                [
-                    'name' => 'Mì tôm Hảo Hảo ly',
-                    'price' => 2000,
-                    'quantity' => 1
-                ]
-            ],
+            "orderCode" => intval($request->orderCode), // ID của Booking trong DB của bạn
+            "amount" => intval($request->amount),       // Tổng tiền vé
+            "description" => "Thanh toan don hang #" . $request->orderCode,
+            "items" => $request->items ?? [],           // Danh sách ghế/vé (nếu có)
             "returnUrl" => $domain . "/payment-success",
             "cancelUrl" => $domain . "/payment-cancel"
         ];
 
         try {
             $response = $this->payOS->createPaymentLink($data);
-            // Trả JSON về cho React xử lý
+
+            // Trả về cho React toàn bộ response, trong đó có checkoutUrl
             return response()->json($response);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json([
+                'error' => 'Lỗi tạo link thanh toán: ' . $e->getMessage()
+            ], 500);
         }
     }
 

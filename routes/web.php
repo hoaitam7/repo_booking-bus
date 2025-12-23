@@ -59,6 +59,7 @@ Route::get('/trips', [TripController::class, 'index'])->name('trips.index'); // 
 
 
 // Route để Frontend gọi tạo link thanh toán
+Route::post('/payment/create-link', [PaymentController::class, 'createPaymentLink']);
 // // Route Webhook để PayOS gọi sang (Lưu ý: Phải tắt CSRF cho route này)
 Route::post('/payment/payos-webhook', [PaymentController::class, 'handleWebhook']);
 
