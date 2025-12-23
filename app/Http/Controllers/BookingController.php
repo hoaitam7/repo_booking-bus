@@ -159,7 +159,7 @@ class BookingController extends Controller
                 'seat_numbers'    => $request->seat_numbers,
                 'passenger_name'  => $request->passenger_name,
                 'passenger_phone' => $request->passenger_phone,
-                'total_amount'    => $totalAmount,
+                'total_amount'    => (int)$totalAmount,
                 'payment_method'  => $request->payment_method,
                 // Nếu chọn banking thì để pending chờ quét mã, chọn cash thì confirmed luôn
                 'status'          => $isBanking ? 'pending' : 'confirmed',
@@ -190,7 +190,7 @@ class BookingController extends Controller
 
                 $paymentData = [
                     "orderCode"   => intval($booking->id), // PayOS yêu cầu ID là số
-                    "amount"      => intval($totalAmount),
+                    "amount"      => (int)$totalAmount,
                     "description" => "Ve xe #" . $booking->id,
                     "cancelUrl"   => env('FRONTEND_URL') . "/payment-cancel", // Tự động lấy từ .env
                     "returnUrl"   => env('FRONTEND_URL') . "/payment-success",

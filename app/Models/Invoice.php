@@ -16,8 +16,9 @@ class Invoice extends Model
     ];
 
     protected $casts = [
-        'total_amount' => 'decimal:2'
+        'total_amount' => 'integer'
     ];
+
 
     public function booking()
     {
