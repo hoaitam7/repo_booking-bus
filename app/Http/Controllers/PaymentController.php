@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use PayOS\PayOS;
+use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
@@ -24,25 +25,38 @@ class PaymentController extends Controller
 
     public function createPaymentLink(Request $request)
     {
-        // Lấy domain Frontend từ .env để Redirect sau khi thanh toán xong
         $domain = env('APP_FRONTEND_URL', 'https://hoaitam123.xyz');
 
-        // Dữ liệu lấy từ React gửi lên (orderCode, amount, ...)
+        // CHỈNH SỬA TẠI ĐÂY ĐỂ FIX LỖI DIGEST TẬN GỐC
+        $orderCode = intval($request->orderCode);
+        $amount = intval($request->amount);
+
+        // 1. Description: Tuyệt đối không dùng khoảng trắng, dấu # hoặc tiếng Việt
+        // Việc dùng chuỗi dính liền giúp Signature ổn định khi ngân hàng trả dữ liệu về
+        $description = "THANHTOANVE" . $orderCode;
+
         $data = [
-            "orderCode" => intval($request->orderCode), // ID của Booking trong DB của bạn
-            "amount" => intval($request->amount),       // Tổng tiền vé
-            "description" => "Thanh toan don hang #" . $request->orderCode,
-            "items" => $request->items ?? [],           // Danh sách ghế/vé (nếu có)
-            "returnUrl" => $domain . "/payment-success",
-            "cancelUrl" => $domain . "/payment-cancel"
+            "orderCode"   => $orderCode,
+            "amount"      => $amount,
+            "description" => $description,
+            "returnUrl"   => $domain . "/payment-success",
+            "cancelUrl"   => $domain . "/payment-cancel",
+            // 2. Thêm mảng Items: PayOS sẽ dùng tổng tiền Items để đối soát Signature
+            // giúp tăng độ chính xác khi xác thực Redirect
+            "items" => [
+                [
+                    "name" => "Ve xe #" . $orderCode,
+                    "quantity" => 1,
+                    "price" => $amount
+                ]
+            ]
         ];
 
         try {
             $response = $this->payOS->createPaymentLink($data);
-
-            // Trả về cho React toàn bộ response, trong đó có checkoutUrl
             return response()->json($response);
         } catch (\Exception $e) {
+            Log::error("PayOS Create Error: " . $e->getMessage());
             return response()->json([
                 'error' => 'Lỗi tạo link thanh toán: ' . $e->getMessage()
             ], 500);
