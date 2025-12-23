@@ -23,45 +23,45 @@ class PaymentController extends Controller
         );
     }
 
-    public function createPaymentLink(Request $request)
-    {
-        $domain = env('APP_FRONTEND_URL', 'https://hoaitam123.xyz');
+    // public function createPaymentLink(Request $request)
+    // {
+    //     $domain = env('APP_FRONTEND_URL', 'https://hoaitam123.xyz');
 
-        // CHỈNH SỬA TẠI ĐÂY ĐỂ FIX LỖI DIGEST TẬN GỐC
-        $orderCode = intval($request->orderCode);
-        $amount = intval($request->amount);
+    //     // CHỈNH SỬA TẠI ĐÂY ĐỂ FIX LỖI DIGEST TẬN GỐC
+    //     $orderCode = intval($request->orderCode);
+    //     $amount = intval($request->amount);
 
-        // 1. Description: Tuyệt đối không dùng khoảng trắng, dấu # hoặc tiếng Việt
-        // Việc dùng chuỗi dính liền giúp Signature ổn định khi ngân hàng trả dữ liệu về
-        $description = "THANHTOANVE" . $orderCode;
+    //     // 1. Description: Tuyệt đối không dùng khoảng trắng, dấu # hoặc tiếng Việt
+    //     // Việc dùng chuỗi dính liền giúp Signature ổn định khi ngân hàng trả dữ liệu về
+    //     $description = "THANHTOANVE" . $orderCode;
 
-        $data = [
-            "orderCode"   => $orderCode,
-            "amount"      => $amount,
-            "description" => $description,
-            "returnUrl"   => $domain . "/payment-success",
-            "cancelUrl"   => $domain . "/payment-cancel",
-            // 2. Thêm mảng Items: PayOS sẽ dùng tổng tiền Items để đối soát Signature
-            // giúp tăng độ chính xác khi xác thực Redirect
-            "items" => [
-                [
-                    "name" => "Ve xe #" . $orderCode,
-                    "quantity" => 1,
-                    "price" => $amount
-                ]
-            ]
-        ];
+    //     $data = [
+    //         "orderCode"   => $orderCode,
+    //         "amount"      => $amount,
+    //         "description" => $description,
+    //         "returnUrl"   => $domain . "/payment-success",
+    //         "cancelUrl"   => $domain . "/payment-cancel",
+    //         // 2. Thêm mảng Items: PayOS sẽ dùng tổng tiền Items để đối soát Signature
+    //         // giúp tăng độ chính xác khi xác thực Redirect
+    //         "items" => [
+    //             [
+    //                 "name" => "Ve xe #" . $orderCode,
+    //                 "quantity" => 1,
+    //                 "price" => $amount
+    //             ]
+    //         ]
+    //     ];
 
-        try {
-            $response = $this->payOS->createPaymentLink($data);
-            return response()->json($response);
-        } catch (\Exception $e) {
-            Log::error("PayOS Create Error: " . $e->getMessage());
-            return response()->json([
-                'error' => 'Lỗi tạo link thanh toán: ' . $e->getMessage()
-            ], 500);
-        }
-    }
+    //     try {
+    //         $response = $this->payOS->createPaymentLink($data);
+    //         return response()->json($response);
+    //     } catch (\Exception $e) {
+    //         Log::error("PayOS Create Error: " . $e->getMessage());
+    //         return response()->json([
+    //             'error' => 'Lỗi tạo link thanh toán: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
 
     public function handleWebhook(Request $request)
     {

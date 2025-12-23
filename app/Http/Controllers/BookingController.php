@@ -86,7 +86,7 @@ class BookingController extends Controller
             'seat_numbers' => 'required|string|max:255',
             'passenger_name' => 'required|string|max:255',
             'passenger_phone' => 'required|string|max:20',
-            'payment_method' => 'required|in:cash,banking,momo',
+            'payment_method' => 'required|in:cash,banking',
         ]);
 
         if ($validator->fails()) {
@@ -163,7 +163,8 @@ class BookingController extends Controller
                 'payment_method'  => $request->payment_method,
                 // Nếu chọn banking thì để pending chờ quét mã, chọn cash thì confirmed luôn
                 'status'          => $isBanking ? 'pending' : 'confirmed',
-                'payment_status'  => 'pending',
+                'payment_status' => $isBanking ? 'pending' : 'unpaid',
+
             ]);
 
             // 2. Trừ ghế tạm thời
@@ -189,11 +190,18 @@ class BookingController extends Controller
                 );
 
                 $paymentData = [
-                    "orderCode"   => intval($booking->id), // PayOS yêu cầu ID là số
-                    "amount"      => (int)$totalAmount,
-                    "description" => "VE" . $booking->id,
-                    "cancelUrl"   => env('FRONTEND_URL') . "/payment-cancel", // Tự động lấy từ .env
-                    "returnUrl"   => env('FRONTEND_URL') . "/payment-success",
+                    "orderCode"   => (int) $booking->id,
+                    "amount"      => (int) $totalAmount,
+                    "description" => "VE{$booking->id}",
+                    "returnUrl"   => env('FRONTEND_URL') . "/payment-success?orderCode={$booking->id}",
+                    "cancelUrl"   => env('FRONTEND_URL') . "/payment-cancel",
+                    "items" => [
+                        [
+                            "name" => "VeXe{$booking->id}",
+                            "quantity" => 1,
+                            "price" => (int) $totalAmount
+                        ]
+                    ]
                 ];
 
                 try {
