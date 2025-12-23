@@ -146,62 +146,6 @@ class BookingController extends Controller
             ], 400);
         }
 
-        // DB::beginTransaction();
-        // try {
-        //     // Tính tổng tiền
-        //     $totalAmount = $trip->ticket_price * $seatCount;
-
-        //     // Tạo booking
-        //     $booking = Booking::create([
-        //         'user_id' => Auth::id(),
-        //         'trip_id' => $request->trip_id,
-        //         'pickup_point_id' => $request->pickup_point_id,
-        //         'seat_numbers' => $request->seat_numbers,
-        //         'passenger_name' => $request->passenger_name,
-        //         'passenger_phone' => $request->passenger_phone,
-        //         'total_amount' => $totalAmount,
-        //         'payment_method' => $request->payment_method,
-        //         'status' => 'confirmed',
-        //         'payment_status' => $request->payment_method === 'cash' ? 'pending' : 'paid',
-        //     ]);
-
-        //     // Cập nhật số ghế trống
-        //     $trip->available_seats -= $seatCount;
-        //     $trip->save();
-
-        //     // Tạo invoice
-        //     $invoiceData = [
-        //         'booking_id' => $booking->id,
-        //         'invoice_number' => 'INV' . date('YmdHis') . rand(100, 999),
-        //         'total_amount' => $totalAmount,
-        //         'status' => $request->payment_method === 'cash' ? 'pending' : 'paid',
-        //     ];
-
-        //     $invoice = Invoice::create($invoiceData);
-
-        //     DB::commit();
-
-        //     // Load relationships
-        //     $booking->load(['trip.route', 'trip.bus', 'pickupPoint', 'invoice']);
-
-        //     return response()->json([
-        //         'success' => true,
-        //         'message' => 'Đặt vé thành công',
-        //         'data' => [
-        //             'booking' => $booking,
-        //             'invoice' => $invoice
-        //         ]
-        //     ], 201);
-        // } catch (\Exception $e) {
-        //     DB::rollBack();
-
-        //     Log::error('Booking error: ' . $e->getMessage());
-
-        //     return response()->json([
-        //         'success' => false,
-        //         'message' => 'Có lỗi xảy ra khi đặt vé: ' . $e->getMessage()
-        //     ], 500);
-        // }
         DB::beginTransaction();
         try {
             $totalAmount = $trip->ticket_price * $seatCount;
@@ -248,8 +192,8 @@ class BookingController extends Controller
                     "orderCode"   => intval($booking->id), // PayOS yêu cầu ID là số
                     "amount"      => $totalAmount,
                     "description" => "Ve xe #" . $booking->id,
-                    "cancelUrl"   => env('FRONTEND_URL') . "/payment-cancel",
-                    "returnUrl"   => env('FRONTEND_URL') . "/payment-success",
+                    "cancelUrl"   => "https://hoaitam123.xyz/payment-cancel",
+                    "returnUrl"   => "https://hoaitam123.xyz/payment-success",
                 ];
 
                 try {
