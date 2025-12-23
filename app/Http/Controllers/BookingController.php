@@ -167,9 +167,10 @@ class BookingController extends Controller
 
             ]);
 
-            // 2. Trừ ghế tạm thời
-            $trip->available_seats -= $seatCount;
-            $trip->save();
+            if (!$isBanking) {
+                $trip->available_seats -= $seatCount;
+                $trip->save();
+            }
 
             // 3. Tạo Invoice
             $invoice = Invoice::create([
@@ -547,6 +548,58 @@ class BookingController extends Controller
                 ],
                 'pickup_points' => $pickupPoints
             ]
+        ]);
+    }
+
+    public function payosWebhook(Request $request): JsonResponse
+    {
+        $orderCode = $request->orderCode;
+        $status = $request->status; // PAID | CANCELLED
+
+        $booking = Booking::with('trip', 'invoice')->find($orderCode);
+        if (!$booking) {
+            return response()->json(['message' => 'Booking not found']);
+        }
+
+        // Idempotent
+        if ($booking->payment_status === 'paid') {
+            return response()->json(['message' => 'Already handled']);
+        }
+
+        if ($status === 'PAID') {
+            // Trừ ghế THẬT lúc này
+            $seatCount = count(explode(',', $booking->seat_numbers));
+            $booking->trip->decrement('available_seats', $seatCount);
+
+            $booking->update([
+                'payment_status' => 'paid',
+                'status' => 'confirmed'
+            ]);
+
+            if ($booking->invoice) {
+                $booking->invoice->update(['status' => 'paid']);
+            }
+        }
+
+        if ($status === 'CANCELLED') {
+            $booking->update([
+                'payment_status' => 'failed',
+                'status' => 'cancelled'
+            ]);
+        }
+
+        return response()->json(['message' => 'OK']);
+    }
+
+
+
+    public function checkPayment($id): JsonResponse
+    {
+        $booking = Booking::with('invoice')->findOrFail($id);
+
+        return response()->json([
+            'payment_status' => $booking->payment_status,
+            'status' => $booking->status
         ]);
     }
 }

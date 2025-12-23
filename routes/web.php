@@ -56,6 +56,8 @@ Route::get('/routes/{routeId}/pickup-points', [BookingController::class, 'getPic
 Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
 Route::get('/invoices/{id}/download', [InvoiceController::class, 'download'])->name('invoices.download'); // Tải invoice
 Route::get('/trips', [TripController::class, 'index'])->name('trips.index'); // Lấy danh sách chuyến xe
+Route::post('/payos/webhook', [BookingController::class, 'payosWebhook']);
+Route::get('/booking/{id}/payment-status', [BookingController::class, 'checkPayment']);
 
 
 // Route để Frontend gọi tạo link thanh toán
