@@ -11,6 +11,8 @@ use App\Http\Controllers\BusController;
 use App\Http\Controllers\PickupPointController;
 use App\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Artisan;
+use App\Http\Controllers\PaymentController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -56,6 +58,9 @@ Route::get('/invoices/{id}/download', [InvoiceController::class, 'download'])->n
 Route::get('/trips', [TripController::class, 'index'])->name('trips.index'); // Lấy danh sách chuyến xe
 
 
+// Route để Frontend gọi tạo link thanh toán
+// // Route Webhook để PayOS gọi sang (Lưu ý: Phải tắt CSRF cho route này)
+Route::post('/payment/payos-webhook', [PaymentController::class, 'handleWebhook']);
 
 // Protected routes - cần đăng nhập
 Route::middleware('auth:sanctum')->group(function () {
@@ -99,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ========== BOOKING ROUTES ==========
     Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index'); // Lấy danh sách booking
     Route::get('/bookings/{id}', [BookingController::class, 'show'])->name('bookings.show'); // Lấy thông tin chi tiết 1 booking theo ID
+    // API đặt vé: Tạo đơn hàng + Trả về link thanh toán PayOS
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store'); // Tạo booking mới
     Route::put('/bookings/{id}', [BookingController::class, 'update'])->name('bookings.update'); // Cập nhật booking theo ID
     Route::delete('/bookings/{id}', [BookingController::class, 'destroy'])->name('bookings.destroy'); // Xóa booking theo ID

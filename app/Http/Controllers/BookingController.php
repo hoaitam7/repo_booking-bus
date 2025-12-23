@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use PayOS\PayOS;
 
 class BookingController extends Controller
 {
@@ -145,61 +146,135 @@ class BookingController extends Controller
             ], 400);
         }
 
+        // DB::beginTransaction();
+        // try {
+        //     // Tính tổng tiền
+        //     $totalAmount = $trip->ticket_price * $seatCount;
+
+        //     // Tạo booking
+        //     $booking = Booking::create([
+        //         'user_id' => Auth::id(),
+        //         'trip_id' => $request->trip_id,
+        //         'pickup_point_id' => $request->pickup_point_id,
+        //         'seat_numbers' => $request->seat_numbers,
+        //         'passenger_name' => $request->passenger_name,
+        //         'passenger_phone' => $request->passenger_phone,
+        //         'total_amount' => $totalAmount,
+        //         'payment_method' => $request->payment_method,
+        //         'status' => 'confirmed',
+        //         'payment_status' => $request->payment_method === 'cash' ? 'pending' : 'paid',
+        //     ]);
+
+        //     // Cập nhật số ghế trống
+        //     $trip->available_seats -= $seatCount;
+        //     $trip->save();
+
+        //     // Tạo invoice
+        //     $invoiceData = [
+        //         'booking_id' => $booking->id,
+        //         'invoice_number' => 'INV' . date('YmdHis') . rand(100, 999),
+        //         'total_amount' => $totalAmount,
+        //         'status' => $request->payment_method === 'cash' ? 'pending' : 'paid',
+        //     ];
+
+        //     $invoice = Invoice::create($invoiceData);
+
+        //     DB::commit();
+
+        //     // Load relationships
+        //     $booking->load(['trip.route', 'trip.bus', 'pickupPoint', 'invoice']);
+
+        //     return response()->json([
+        //         'success' => true,
+        //         'message' => 'Đặt vé thành công',
+        //         'data' => [
+        //             'booking' => $booking,
+        //             'invoice' => $invoice
+        //         ]
+        //     ], 201);
+        // } catch (\Exception $e) {
+        //     DB::rollBack();
+
+        //     Log::error('Booking error: ' . $e->getMessage());
+
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Có lỗi xảy ra khi đặt vé: ' . $e->getMessage()
+        //     ], 500);
+        // }
         DB::beginTransaction();
         try {
-            // Tính tổng tiền
             $totalAmount = $trip->ticket_price * $seatCount;
+            $isBanking = $request->payment_method === 'banking';
 
-            // Tạo booking
+            // 1. Tạo booking (Trạng thái phụ thuộc vào phương thức thanh toán)
             $booking = Booking::create([
-                'user_id' => Auth::id(),
-                'trip_id' => $request->trip_id,
+                'user_id'         => Auth::id(),
+                'trip_id'         => $request->trip_id,
                 'pickup_point_id' => $request->pickup_point_id,
-                'seat_numbers' => $request->seat_numbers,
-                'passenger_name' => $request->passenger_name,
+                'seat_numbers'    => $request->seat_numbers,
+                'passenger_name'  => $request->passenger_name,
                 'passenger_phone' => $request->passenger_phone,
-                'total_amount' => $totalAmount,
-                'payment_method' => $request->payment_method,
-                'status' => 'confirmed',
-                'payment_status' => $request->payment_method === 'cash' ? 'pending' : 'paid',
+                'total_amount'    => $totalAmount,
+                'payment_method'  => $request->payment_method,
+                // Nếu chọn banking thì để pending chờ quét mã, chọn cash thì confirmed luôn
+                'status'          => $isBanking ? 'pending' : 'confirmed',
+                'payment_status'  => 'pending',
             ]);
 
-            // Cập nhật số ghế trống
+            // 2. Trừ ghế tạm thời
             $trip->available_seats -= $seatCount;
             $trip->save();
 
-            // Tạo invoice
-            $invoiceData = [
-                'booking_id' => $booking->id,
+            // 3. Tạo Invoice
+            $invoice = Invoice::create([
+                'booking_id'     => $booking->id,
                 'invoice_number' => 'INV' . date('YmdHis') . rand(100, 999),
-                'total_amount' => $totalAmount,
-                'status' => $request->payment_method === 'cash' ? 'pending' : 'paid',
-            ];
+                'total_amount'   => $totalAmount,
+                'status'         => 'pending',
+            ]);
 
-            $invoice = Invoice::create($invoiceData);
+            $checkoutUrl = null;
+
+            // 4. GỌI PAYOS NẾU LÀ BANKING
+            if ($isBanking) {
+                $payOS = new PayOS(
+                    config('services.payos.client_id'),
+                    config('services.payos.api_key'),
+                    config('services.payos.checksum_key')
+                );
+
+                $paymentData = [
+                    "orderCode"   => intval($booking->id), // PayOS yêu cầu ID là số
+                    "amount"      => $totalAmount,
+                    "description" => "Ve xe #" . $booking->id,
+                    "cancelUrl"   => env('FRONTEND_URL') . "/payment-cancel",
+                    "returnUrl"   => env('FRONTEND_URL') . "/payment-success",
+                ];
+
+                try {
+                    $paymentLinkResponse = $payOS->createPaymentLink($paymentData);
+                    $checkoutUrl = $paymentLinkResponse['checkoutUrl'];
+                } catch (\Exception $e) {
+                    // Nếu lỗi PayOS thì rollback đơn hàng luôn
+                    throw new \Exception("Lỗi kết nối cổng thanh toán: " . $e->getMessage());
+                }
+            }
 
             DB::commit();
 
-            // Load relationships
-            $booking->load(['trip.route', 'trip.bus', 'pickupPoint', 'invoice']);
-
             return response()->json([
                 'success' => true,
-                'message' => 'Đặt vé thành công',
+                'message' => $isBanking ? 'Vui lòng quét mã để thanh toán' : 'Đặt vé thành công',
                 'data' => [
-                    'booking' => $booking,
-                    'invoice' => $invoice
+                    'booking'     => $booking->load(['trip.route', 'trip.bus', 'pickupPoint', 'invoice']),
+                    'checkoutUrl' => $checkoutUrl // Trả link này về cho React
                 ]
             ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
-
             Log::error('Booking error: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Có lỗi xảy ra khi đặt vé: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
@@ -521,5 +596,53 @@ class BookingController extends Controller
                 'pickup_points' => $pickupPoints
             ]
         ]);
+    }
+
+    public function payosWebhook(Request $request): JsonResponse
+    {
+        // 1. Ghi log để kiểm tra (rất quan trọng khi debug trên hosting)
+        Log::info('PayOS Webhook nhận dữ liệu:', $request->all());
+
+        $payOS = new PayOS(
+            config('services.payos.client_id'),
+            config('services.payos.api_key'),
+            config('services.payos.checksum_key')
+        );
+
+        try {
+            // 2. Xác thực dữ liệu từ PayOS
+            $webhookData = $payOS->verifyPaymentWebhookData($request->all());
+
+            // 3. Xử lý trường hợp "Webhook Test" từ PayOS (Lúc bạn nhấn nút Lưu)
+            // Dữ liệu test thường có nội dung đặc biệt hoặc orderCode giả
+            if ($webhookData['description'] == 'Ma don hang' || $webhookData['orderCode'] == 123) {
+                return response()->json(['success' => true]);
+            }
+
+            $bookingId = $webhookData['orderCode'];
+            $booking = Booking::find($bookingId);
+
+            if ($booking && $booking->status === 'pending') {
+                DB::transaction(function () use ($booking) {
+                    // Cập nhật trạng thái
+                    $booking->update([
+                        'status' => 'confirmed',
+                        'payment_status' => 'paid'
+                    ]);
+
+                    if ($booking->invoice) {
+                        $booking->invoice->update(['status' => 'paid']);
+                    }
+                });
+                Log::info("Booking #$bookingId đã được thanh toán thành công qua Webhook.");
+            }
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            Log::error('Webhook Error: ' . $e->getMessage());
+            // Trả về 200 dù có lỗi logic bên trong để PayOS không gửi lại liên tục
+            // Nhưng khi đang cài đặt Webhook, hãy đảm bảo trả về 200
+            return response()->json(['success' => false], 200);
+        }
     }
 }
