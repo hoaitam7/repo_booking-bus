@@ -191,7 +191,7 @@ class BookingController extends Controller
                 $paymentData = [
                     "orderCode"   => intval($booking->id), // PayOS yêu cầu ID là số
                     "amount"      => (int)$totalAmount,
-                    "description" => "Thanh toan ve " . $booking->id,
+                    "description" => "VE" . $booking->id,
                     "cancelUrl"   => env('FRONTEND_URL') . "/payment-cancel", // Tự động lấy từ .env
                     "returnUrl"   => env('FRONTEND_URL') . "/payment-success",
                 ];
