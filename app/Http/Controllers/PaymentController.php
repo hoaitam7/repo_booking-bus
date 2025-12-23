@@ -13,7 +13,6 @@ class PaymentController extends Controller
     //
     private $payOS;
 
-    // app/Http/Controllers/PaymentController.php
 
     public function __construct()
     {
@@ -27,21 +26,58 @@ class PaymentController extends Controller
 
     public function handleWebhook(Request $request)
     {
-        $data = $this->payOS->verifyPaymentWebhookData($request->all());
+        Log::info('PayOS webhook received', $request->all());
 
-        $booking = Booking::find($data['orderCode']);
+        try {
+            $payOS = new PayOS(
+                config('services.payos.client_id'),
+                config('services.payos.api_key'),
+                config('services.payos.checksum_key')
+            );
 
-        if ($booking && $data['status'] === 'PAID') {
+            // 1. Xác thực chữ ký
+            $data = $payOS->verifyPaymentWebhookData($request->all());
+
+            // 2. Lấy orderCode
+            $bookingId = $data['orderCode'] ?? null;
+            if (!$bookingId) {
+                Log::warning('Webhook thiếu orderCode');
+                return response()->json(['success' => false], 200);
+            }
+
+            $booking = Booking::find($bookingId);
+            if (!$booking) {
+                Log::warning("Không tìm thấy booking #$bookingId");
+                return response()->json(['success' => true], 200);
+            }
+
+            // 3. Nếu đã paid thì bỏ qua (tránh webhook gửi lại)
+            if ($booking->payment_status === 'paid') {
+                return response()->json(['success' => true], 200);
+            }
+
+            // 4. Cập nhật trạng thái
             DB::transaction(function () use ($booking) {
                 $booking->update([
                     'status' => 'confirmed',
-                    'payment_status' => 'paid'
+                    'payment_status' => 'paid',
                 ]);
 
-                $booking->invoice?->update(['status' => 'paid']);
+                if ($booking->invoice) {
+                    $booking->invoice->update([
+                        'status' => 'paid'
+                    ]);
+                }
             });
-        }
 
-        return response()->json(['success' => true], 200);
+            Log::info("Booking #$bookingId thanh toán thành công");
+
+            return response()->json(['success' => true], 200);
+        } catch (\Exception $e) {
+            Log::error('PayOS Webhook Error: ' . $e->getMessage());
+
+            // ⚠️ PHẢI TRẢ 200 để PayOS không retry vô hạn
+            return response()->json(['success' => false], 200);
+        }
     }
 }
