@@ -122,7 +122,6 @@ class InvoiceController extends Controller
      */
     public function download($id)
     {
-        // Lấy invoice với các quan hệ cần thiết - DÙNG ĐÚNG TÊN CỘT TRONG DB
         $invoice = Invoice::with([
             'booking.user',
             'booking.trip.route', // Load thêm route để lấy thông tin tuyến đường
@@ -151,7 +150,7 @@ class InvoiceController extends Controller
         $data = [
             'invoice' => $invoice,
             'company' => [
-                'name' => 'HỆ THỐNG ĐẶT VÉ XE',
+                'name' => 'HỆ THỐNG ĐẶT VÉ XE TH',
                 'address' => '123 Đường ABC, Quận 1, TP.HCM',
                 'phone' => '(028) 1234 5678',
                 'email' => 'info@busticket.com',
@@ -163,9 +162,7 @@ class InvoiceController extends Controller
 
         // Tạo PDF từ view
         $pdf = PDF::loadView('pdf.invoice', $data)
-            ->setPaper('A4', 'portrait');
-
-
+            ->setPaper('A6', 'portrait');
         // Sửa tên file theo đúng cột trong DB: invoice_number thay vì invoice_code
         $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
 

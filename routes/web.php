@@ -53,7 +53,7 @@ Route::post('/search-routes', [RouteController::class, 'searchRoutes']); //lịc
 Route::get('/trips/{tripId}', [TripController::class, 'show']);  //chi tiết một chuyến xe (phục vụ phần booking)
 Route::get('/trips/{tripId}/seats', [BookingController::class, 'getAvailableSeats']); //Lấy danh sách ghế trống của chuyến xe có ID = tripId
 Route::get('/routes/{routeId}/pickup-points', [BookingController::class, 'getPickupPoints']); //Lấy danh sách điểm đón của tuyến xe có ID = routeId
-Route::get('/routes', [RouteController::class, 'index'])->name('routes.index');
+Route::get('/routess', [RouteController::class, 'index'])->name('routes.index');
 Route::get('/invoices/{id}/download', [InvoiceController::class, 'download'])->name('invoices.download'); // Tải invoice
 Route::get('/trips', [TripController::class, 'index'])->name('trips.index'); // Lấy danh sách chuyến xe
 Route::post('/payos/webhook', [BookingController::class, 'payosWebhook']);

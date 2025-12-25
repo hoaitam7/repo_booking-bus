@@ -109,7 +109,7 @@ class TripController extends Controller
     }
 
     /**
-     * TẠO NHIỀU CHUYẾN CÙNG LÚC (quan trọng)
+     * TẠO NHIỀU CHUYẾN CÙNG LÚC
      * Admin chỉ cần tạo 1 lần cho nhiều ngày
      */
     // public function bulkCreate(Request $request): JsonResponse
