@@ -84,10 +84,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/buses/{id}', [BusController::class, 'destroy'])->name('buses.destroy'); // Xóa bus theo ID
 
     // ========== QUẢN LÝ ROUTE (Admin/Manager) ==========
-    Route::get('/routes/{id}', [RouteController::class, 'show'])->name('routes.show'); // Lấy thông tin chi tiết 1 tuyến đường theo ID
-    Route::post('/routes', [RouteController::class, 'store'])->name('routes.store'); // Tạo tuyến đường mới
-    Route::put('/routes/{id}', [RouteController::class, 'update'])->name('routes.update'); // Cập nhật tuyến đường theo ID
-    Route::delete('/routes/{id}', [RouteController::class, 'destroy'])->name('routes.destroy'); // Xóa tuyến đường theo ID
+    Route::get('/routess/{id}', [RouteController::class, 'show'])->name('routes.show'); // Lấy thông tin chi tiết 1 tuyến đường theo ID
+    Route::post('/routess', [RouteController::class, 'store'])->name('routes.store'); // Tạo tuyến đường mới
+    Route::put('/routess/{id}', [RouteController::class, 'update'])->name('routes.update'); // Cập nhật tuyến đường theo ID
+    Route::delete('/routess/{id}', [RouteController::class, 'destroy'])->name('routes.destroy'); // Xóa tuyến đường theo ID
 
     // ========== QUẢN LÝ ĐIỂM ĐÓN (Admin/Manager) ==========
     Route::get('/pickup-points', [PickupPointController::class, 'index'])->name('pickup-points.index');
