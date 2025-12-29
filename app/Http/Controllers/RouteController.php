@@ -6,10 +6,11 @@ use App\Models\Route;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+
 
 class RouteController extends Controller
 {
-    // app/Http/Controllers/RouteController.php
     public function getPopularRoutes(): JsonResponse
     {
         $popularRoutes = Route::with(['trips.bus'])
@@ -38,7 +39,6 @@ class RouteController extends Controller
         ]);
     }
 
-    // app/Http/Controllers/RouteController.php
     public function searchRoutes(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -119,39 +119,60 @@ class RouteController extends Controller
     /**
      * Tạo tuyến đường mới
      */
-    public function store(Request $request): JsonResponse
+
+
+    public function store(Request $request)
     {
+        // 1. Validation (Ảnh có thể null)
         $validator = Validator::make($request->all(), [
             'from_city' => 'required|string|max:255',
-            'to_city' => 'required|string|max:255',
-            'distance' => 'nullable|numeric|min:0',
-            'duration' => 'nullable|string|max:50',
-            'price' => 'required|numeric|min:0',
+            'to_city'   => 'required|string|max:255',
+            'price'     => 'required|numeric|min:0',
+            'image'     => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Dữ liệu không hợp lệ',
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors()
             ], 422);
         }
 
-        $route = Route::create([
-            'from_city' => $request->from_city,
-            'to_city' => $request->to_city,
-            'distance' => $request->distance,
-            'duration' => $request->duration,
-            'price' => $request->price,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            $imgUrl = null;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Tạo tuyến đường thành công',
-            'data' => $route
-        ], 201);
+            // 2. Nếu có file thì upload lên Cloudinary
+            if ($request->hasFile('image')) {
+                // 'bus_routes' là tên thư mục trên Cloudinary của bạn
+                $uploadResult = Cloudinary::upload($request->file('image')->getRealPath(), [
+                    'folder' => 'bus'
+                ]);
+
+                // Lấy link CDN ảnh
+                $imgUrl = $uploadResult->getSecurePath();
+            }
+
+            // 3. Lưu vào Database
+            $route = Route::create([
+                'from_city' => $request->from_city,
+                'to_city'   => $request->to_city,
+                'distance'  => $request->distance,
+                'duration'  => $request->duration,
+                'price'     => $request->price,
+                'img_url'   => $imgUrl, // Nếu ko có file, giá trị này sẽ là null
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tạo tuyến đường thành công',
+                'data'    => $route
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi khi upload ảnh hoặc lưu dữ liệu: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**

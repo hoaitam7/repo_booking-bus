@@ -72,19 +72,10 @@ Route::post('/payment/create-link', [PaymentController::class, 'createPaymentLin
 Route::post('/payment/payos-webhook', [PaymentController::class, 'handleWebhook']);
 
 
-//test mail
-// Route::get('/test-mail', function () {
-//     try {
-//         Mail::raw('Test email from Laravel!', function ($message) {
-//             $message->to('your-test-email@gmail.com')
-//                 ->subject('Test Email Configuration');
-//         });
+Route::get('/test-cloudinary', function () {
+    return config('cloudinary.cloud_url');
+});
 
-//         return '✅ Email sent successfully! Check your inbox.';
-//     } catch (\Exception $e) {
-//         return ' Error: ' . $e->getMessage();
-//     }
-// });
 
 
 // Protected routes - cần đăng nhập

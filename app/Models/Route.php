@@ -11,7 +11,8 @@ class Route extends Model
         'to_city',
         'distance',
         'duration',
-        'price'
+        'price',
+        'img_url'
     ];
 
     public function trips()

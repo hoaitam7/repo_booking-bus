@@ -12,6 +12,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         //
+        config(['cloudinary.cloudinary_url' => env('CLOUDINARY_URL')]);
     }
 
     /**
