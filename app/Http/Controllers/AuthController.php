@@ -5,8 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Mail\Message;
+use Illuminate\Support\Str;
+
 
 class AuthController extends Controller
 {
@@ -125,5 +129,64 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Đổi mật khẩu thành công'
         ]);
+    }
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+        ], [
+            'email.exists' => 'Email không tồn tại trong hệ thống.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi xác thực',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+        try {
+            // Tìm user
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Người dùng không tồn tại'
+                ], 404);
+            }
+
+            // Tạo password mới (8 ký tự, có số và chữ)
+            $newPassword = Str::random(8) . rand(10, 99);
+
+            // Cập nhật password trong database
+            $user->password = Hash::make($newPassword);
+            $user->save();
+
+            // Gửi email chứa password mới
+            // Mail::send($view, $data, $callback);
+            Mail::send('email', [
+                'user' => $user,
+                'newPassword' => $newPassword,
+            ], function (Message $message) use ($user) {
+                $message->to($user->email) //to: là email đích gửi đến user quên mk
+                    ->subject('Mật khẩu mới'); //$message->subject('tiêu đề email'); 
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Đã gửi mật khẩu mới qua email',
+                'data' => [
+                    'email' => $user->email,
+                    'note' => 'Vui lòng kiểm tra email và đăng nhập bằng mật khẩu mới'
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể gửi email. Vui lòng thử lại sau.',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
 }

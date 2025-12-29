@@ -12,6 +12,8 @@ use App\Http\Controllers\PickupPointController;
 use App\Http\Controllers\InvoiceController;
 use Illuminate\Support\Facades\Artisan;
 use App\Http\Controllers\PaymentController;
+use Illuminate\Support\Facades\Mail;
+
 
 
 /*
@@ -28,6 +30,8 @@ use App\Http\Controllers\PaymentController;
 Route::get('/', function () {
     return view('welcome');
 });
+// Thêm route test
+
 
 
 Route::get('/clear', function () {
@@ -58,6 +62,8 @@ Route::get('/invoices/{id}/download', [InvoiceController::class, 'download'])->n
 Route::get('/trips', [TripController::class, 'index'])->name('trips.index'); // Lấy danh sách chuyến xe
 Route::post('/payos/webhook', [BookingController::class, 'payosWebhook']);
 Route::get('/booking/{id}/payment-status', [BookingController::class, 'checkPayment']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('resetPassword');
+
 
 
 // Route để Frontend gọi tạo link thanh toán
@@ -65,9 +71,25 @@ Route::post('/payment/create-link', [PaymentController::class, 'createPaymentLin
 // // Route Webhook để PayOS gọi sang (Lưu ý: Phải tắt CSRF cho route này)
 Route::post('/payment/payos-webhook', [PaymentController::class, 'handleWebhook']);
 
+
+//test mail
+// Route::get('/test-mail', function () {
+//     try {
+//         Mail::raw('Test email from Laravel!', function ($message) {
+//             $message->to('your-test-email@gmail.com')
+//                 ->subject('Test Email Configuration');
+//         });
+
+//         return '✅ Email sent successfully! Check your inbox.';
+//     } catch (\Exception $e) {
+//         return ' Error: ' . $e->getMessage();
+//     }
+// });
+
+
 // Protected routes - cần đăng nhập
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/change-password', [AuthController::class, 'changePassword'])->name('changePassword'); //thay đổi mk user
+    Route::post('/change-password/{id}', [AuthController::class, 'changePassword'])->name('changePassword'); //thay đổi mk user
     // ========== QUẢN LÝ USERS (Admin/Manager) ==========
     // Danh sách users (có thêm phân trang, filter)
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
