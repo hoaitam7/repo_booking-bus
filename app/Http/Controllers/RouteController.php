@@ -143,7 +143,7 @@ class RouteController extends Controller
 
             // 2. Nếu có file thì upload lên Cloudinary
             if ($request->hasFile('image')) {
-                // 'bus_routes' là tên thư mục trên Cloudinary của bạn
+                // 'bus_routes' là tên thư mục trên Cloudinary
                 $uploadResult = Cloudinary::upload($request->file('image')->getRealPath(), [
                     'folder' => 'bus'
                 ]);
@@ -249,5 +249,58 @@ class RouteController extends Controller
             'success' => true,
             'message' => 'Xóa tuyến đường thành công'
         ]);
+    }
+
+    //danh sách điểm đi
+    public function fromCity()
+    {
+        try {
+            // Lấy tất cả điểm đi không trùng lặp và sắp xếp theo thứ tự
+            $cities = Route::select('from_city')
+                ->distinct()
+                ->whereNotNull('from_city')
+                ->where('from_city', '!=', '')
+                ->orderBy('from_city')
+                ->get()
+                ->pluck('from_city');
+
+            return response()->json([
+                'success' => true,
+                'data' => $cities,
+                'message' => 'Lấy danh sách điểm đi thành công'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Lấy danh sách điểm đến (to_city) không trùng lặp
+     */
+    public function toCity()
+    {
+        try {
+            $cities = Route::select('to_city')
+                ->distinct()
+                ->whereNotNull('to_city')
+                ->where('to_city', '!=', '')
+                ->orderBy('to_city')
+                ->get()
+                ->pluck('to_city');
+
+            return response()->json([
+                'success' => true,
+                'data' => $cities,
+                'message' => 'Lấy danh sách điểm đến thành công'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

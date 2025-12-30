@@ -63,6 +63,8 @@ Route::get('/trips', [TripController::class, 'index'])->name('trips.index'); // 
 Route::post('/payos/webhook', [BookingController::class, 'payosWebhook']);
 Route::get('/booking/{id}/payment-status', [BookingController::class, 'checkPayment']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('resetPassword');
+Route::get('/routess/from-city', [RouteController::class, 'fromCity'])->name('fromCity'); // lấy danh sách điểm đi
+Route::get('/routess/to-city', [RouteController::class, 'toCity'])->name('toCity'); // lấy danh sách điểm đến
 
 
 
@@ -72,9 +74,6 @@ Route::post('/payment/create-link', [PaymentController::class, 'createPaymentLin
 Route::post('/payment/payos-webhook', [PaymentController::class, 'handleWebhook']);
 
 
-Route::get('/test-cloudinary', function () {
-    return config('cloudinary.cloud_url');
-});
 
 
 
