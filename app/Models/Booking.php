@@ -50,7 +50,7 @@ class Booking extends Model
         parent::boot();
 
         static::creating(function ($booking) {
-            $booking->booking_code = 'BK' . date('YmdHis') . rand(100, 999);
+            $booking->booking_code = (int)(now()->format('ymdHi') . rand(100, 999));
         });
     }
 }

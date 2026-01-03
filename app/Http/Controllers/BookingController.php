@@ -8,6 +8,7 @@ use App\Models\Trip;
 use App\Models\Route;
 use App\Models\PickupPoint;
 use App\Models\Invoice;
+use App\Models\Bus;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -86,7 +87,7 @@ class BookingController extends Controller
             'seat_numbers' => 'required|string|max:255',
             'passenger_name' => 'required|string|max:255',
             'passenger_phone' => 'required|string|max:20',
-            'payment_method' => 'required|in:cash,banking',
+            'payment_method' => 'required|in:banking',
         ]);
 
         if ($validator->fails()) {
@@ -110,7 +111,7 @@ class BookingController extends Controller
         $requestedSeats = explode(',', $request->seat_numbers); //['A1', 'A2','A4'];  // A3, A4, A5
         $seatCount = count($requestedSeats); //3
 
-        if ($seatCount > $trip->available_seats) { //43 > 40 
+        if ($seatCount > $trip->available_seats) { //43 > 40
             return response()->json([
                 'success' => false,
                 'message' => 'Số ghế bạn chọn vượt quá số ghế còn trống'
@@ -161,66 +162,44 @@ class BookingController extends Controller
                 'passenger_phone' => $request->passenger_phone,
                 'total_amount'    => (int)$totalAmount,
                 'payment_method'  => $request->payment_method,
-                // Nếu chọn banking thì để pending chờ quét mã, chọn cash thì confirmed luôn
-                'status'          => $isBanking ? 'pending' : 'confirmed',
-                'payment_status' => $isBanking ? 'pending' : 'unpaid',
+                'status'          => 'pending',
+                'payment_status' => 'pending',
 
             ]);
-
-            if (!$isBanking) {
-                $trip->available_seats -= $seatCount;
-                $trip->save();
-            }
-
-            // 3. Tạo Invoice
-            $invoice = Invoice::create([
-                'booking_id'     => $booking->id,
-                'invoice_number' => 'INV' . date('YmdHis') . rand(100, 999),
-                'total_amount'   => $totalAmount,
-                'status'         => 'pending',
-            ]);
-
-            $checkoutUrl = null;
-
-            // 4. GỌI PAYOS NẾU LÀ BANKING
+            // 4. GỌI PAYOS
             if ($isBanking) {
                 $payOS = new PayOS(
-                    config('services.payos.client_id'),
-                    config('services.payos.api_key'),
-                    config('services.payos.checksum_key')
+                    "3e060d4a-172b-45fb-97bf-e047f0149a19",
+                    "3608d2ef-6cdf-4747-a7bb-37590cdbacc4",
+                    "8a6f1ac5287ae84889617220d2b93c98df79e8ab7e3ff5ecf486fb964971ed3c",
                 );
 
                 $paymentData = [
-                    "orderCode"   => (int) $booking->id,
+                    "orderCode"   => (int) $booking->booking_code,
                     "amount"      => (int) $totalAmount,
-                    "description" => "VE{$booking->id}",
-                    "returnUrl"   => env('FRONTEND_URL') . "/payment-success?orderCode={$booking->id}",
-                    "cancelUrl"   => env('FRONTEND_URL') . "/payment-cancel",
+                    "description" => "THANH TOAN VE XE",
+                    "returnUrl"   => env('FRONTEND_URL') . "/payment-success?orderCode={$booking->booking_code}",
+                    "cancelUrl"   => env('FRONTEND_URL') . "/payment-cancel?orderCode={$booking->booking_code}",
                     "items" => [
                         [
-                            "name" => "VeXe{$booking->id}",
+                            "name" => "Mã đặt vé xe: {$booking->booking_code}",
                             "quantity" => 1,
                             "price" => (int) $totalAmount
                         ]
                     ]
                 ];
-
                 try {
                     $paymentLinkResponse = $payOS->createPaymentLink($paymentData);
                     $checkoutUrl = $paymentLinkResponse['checkoutUrl'];
                 } catch (\Exception $e) {
-                    // Nếu lỗi PayOS thì rollback đơn hàng luôn
                     throw new \Exception("Lỗi kết nối cổng thanh toán: " . $e->getMessage());
                 }
             }
-
             DB::commit();
-
             return response()->json([
                 'success' => true,
-                'message' => $isBanking ? 'Vui lòng quét mã để thanh toán' : 'Đặt vé thành công',
+                'message' => 'Vui lòng quét mã để thanh toán',
                 'data' => [
-                    'booking'     => $booking->load(['trip.route', 'trip.bus', 'pickupPoint', 'invoice']),
                     'checkoutUrl' => $checkoutUrl // Trả link này về cho React
                 ]
             ], 201);
@@ -382,16 +361,20 @@ class BookingController extends Controller
             ], 500);
         }
     }
-
     /**
      * Lấy danh sách booking của user hiện tại
      */
-    public function myBookings(): JsonResponse
+    public function myBookings(int $userId): JsonResponse
     {
-        $bookings = Booking::with(['trip', 'pickupPoint', 'invoice'])
-            ->where('user_id', Auth::id())
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        $bookings = Booking::with([
+            'trip.bus',
+            'trip.route',
+            'pickupPoint',
+            'invoice'
+        ])
+            ->where('user_id', $userId)
+            ->orderByDesc('created_at')
+            ->paginate(10);
 
         return response()->json([
             'success' => true,
@@ -551,55 +534,19 @@ class BookingController extends Controller
         ]);
     }
 
-    public function payosWebhook(Request $request): JsonResponse
+    public function cancelPayment($booking_code)
     {
-        $orderCode = $request->orderCode;
-        $status = $request->status; // PAID | CANCELLED
+        $booking = Booking::where('booking_code', $booking_code)->firstOrFail();
 
-        $booking = Booking::with('trip', 'invoice')->find($orderCode);
-        if (!$booking) {
-            return response()->json(['message' => 'Booking not found']);
+        if ($booking->payment_status !== 'pending') {
+            return;
         }
 
-        // Idempotent
-        if ($booking->payment_status === 'paid') {
-            return response()->json(['message' => 'Already handled']);
-        }
-
-        if ($status === 'PAID') {
-            // Trừ ghế THẬT lúc này
-            $seatCount = count(explode(',', $booking->seat_numbers));
-            $booking->trip->decrement('available_seats', $seatCount);
-
-            $booking->update([
-                'payment_status' => 'paid',
-                'status' => 'confirmed'
-            ]);
-
-            if ($booking->invoice) {
-                $booking->invoice->update(['status' => 'paid']);
-            }
-        }
-
-        if ($status === 'CANCELLED') {
-            $booking->update([
-                'payment_status' => 'failed',
-                'status' => 'cancelled'
-            ]);
-        }
-
-        return response()->json(['message' => 'OK']);
-    }
-
-
-
-    public function checkPayment($id): JsonResponse
-    {
-        $booking = Booking::with('invoice')->findOrFail($id);
-
-        return response()->json([
-            'payment_status' => $booking->payment_status,
-            'status' => $booking->status
+        $booking->update([
+            'status' => 'cancelled',
+            'payment_status' => 'cancelled',
         ]);
+
+        return response()->json(['success' => true]);
     }
 }

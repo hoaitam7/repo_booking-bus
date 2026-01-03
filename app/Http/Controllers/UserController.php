@@ -10,11 +10,6 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
-
-    /**
-     * Lấy danh sách users (GET /users)
-     * Phân trang và filter
-     */
     public function index(Request $request): JsonResponse
     {
         $query = User::query();
@@ -49,10 +44,6 @@ class UserController extends Controller
             'message' => 'Danh sách users'
         ]);
     }
-
-    /**
-     * Tạo user mới (POST /users)
-     */
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -89,10 +80,6 @@ class UserController extends Controller
             ]
         ], 201);
     }
-
-    /**
-     * Lấy thông tin user cụ thể (GET /users/{id})
-     */
     public function show(User $user): JsonResponse
     {
         return response()->json([
@@ -102,11 +89,6 @@ class UserController extends Controller
             ]
         ]);
     }
-
-    /**
-     * Cập nhật user cụ thể (PUT /users/{id})
-     * For admin/managers
-     */
     public function update(Request $request, User $user): JsonResponse
     {
         $validator = Validator::make($request->all(), [
@@ -142,10 +124,6 @@ class UserController extends Controller
             ]
         ]);
     }
-
-    /**
-     * Xóa user (DELETE /users/{id})
-     */
     public function destroy(User $user): JsonResponse
     {
         // Prevent self-deletion

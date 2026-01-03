@@ -163,10 +163,7 @@ class InvoiceController extends Controller
         // Tạo PDF từ view
         $pdf = PDF::loadView('pdf.invoice', $data)
             ->setPaper('A6', 'portrait');
-        // Sửa tên file theo đúng cột trong DB: invoice_number thay vì invoice_code
         $filename = 'invoice-' . $invoice->invoice_number . '.pdf';
-
-        // Download file
         return $pdf->download($filename);
     }
 }

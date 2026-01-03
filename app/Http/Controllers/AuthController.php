@@ -74,6 +74,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
+        //không tồn tại user, tài khoản sai
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
@@ -81,16 +82,15 @@ class AuthController extends Controller
             ], 401);
         }
 
-        // Tạo token và tách lấy phần plain text sau dấu "|"
+        // Tạo token
         $plainToken = $user->createToken('auth_token')->plainTextToken;
         $token = explode('|', $plainToken)[1] ?? $plainToken;
-
         return response()->json([
             'success' => true,
             'message' => 'Đăng nhập thành công',
             'data' => [
                 'user' => $user,
-                'access_token' => $token // Lúc này chỉ còn chuỗi token sạch
+                'access_token' => $token
             ]
         ]);
     }
@@ -111,20 +111,16 @@ class AuthController extends Controller
                 'errors' => $validator->errors()
             ], 422);
         }
-
         $user = $request->user();
-
         if (!Hash::check($request->current_password, $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Mật khẩu hiện tại không đúng'
             ], 400);
         }
-
         $user->update([
             'password' => Hash::make($request->new_password)
         ]);
-
         return response()->json([
             'success' => true,
             'message' => 'Đổi mật khẩu thành công'
@@ -162,7 +158,6 @@ class AuthController extends Controller
             // Cập nhật password trong database
             $user->password = Hash::make($newPassword);
             $user->save();
-
             // Gửi email chứa password mới
             // Mail::send($view, $data, $callback);
             Mail::send('email', [
@@ -170,7 +165,7 @@ class AuthController extends Controller
                 'newPassword' => $newPassword,
             ], function (Message $message) use ($user) {
                 $message->to($user->email) //to: là email đích gửi đến user quên mk
-                    ->subject('Mật khẩu mới'); //$message->subject('tiêu đề email'); 
+                    ->subject('Mật khẩu mới'); //$message->subject('tiêu đề email');
             });
 
             return response()->json([
@@ -178,7 +173,7 @@ class AuthController extends Controller
                 'message' => 'Đã gửi mật khẩu mới qua email',
                 'data' => [
                     'email' => $user->email,
-                    'note' => 'Vui lòng kiểm tra email và đăng nhập bằng mật khẩu mới'
+                    'message' => 'Vui lòng kiểm tra email và đăng nhập bằng mật khẩu mới'
                 ]
             ]);
         } catch (\Exception $e) {
