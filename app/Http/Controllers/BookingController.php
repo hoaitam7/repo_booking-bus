@@ -1,4 +1,5 @@
 <?php
+
 // app/Http/Controllers/BookingController.php
 
 namespace App\Http\Controllers;
@@ -41,7 +42,6 @@ class BookingController extends Controller
         ]);
     }
 
-
     /**
      * Xem chi tiết booking
      */
@@ -63,7 +63,7 @@ class BookingController extends Controller
         }
 
         // Kiểm tra quyền: user chỉ xem được booking của mình
-        if (Auth::check() && Auth::user()->role !== 'admin' && $booking->user_id != Auth::id()) {
+        if (Auth::check() && Auth::user()->role !== 'admin' && $booking->user_id !== Auth::id()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Không có quyền truy cập'
@@ -98,7 +98,6 @@ class BookingController extends Controller
             ], 422);
         }
 
-        // Kiểm tra chuyến xe có tồn tại và còn chỗ không
         $trip = Trip::find($request->trip_id);
         if (!$trip || $trip->status !== 'scheduled') {
             return response()->json([
@@ -107,38 +106,40 @@ class BookingController extends Controller
             ], 400);
         }
 
-        // Kiểm tra số ghế còn trống
-        $requestedSeats = explode(',', $request->seat_numbers); //['A1', 'A2','A4'];  // A3, A4, A5
-        $seatCount = count($requestedSeats); //3
+        $requestedSeats = explode(',', $request->seat_numbers);
+        $seatCount = count($requestedSeats);
 
-        if ($seatCount > $trip->available_seats) { //43 > 40
+        if ($seatCount > $trip->available_seats) {
             return response()->json([
                 'success' => false,
                 'message' => 'Số ghế bạn chọn vượt quá số ghế còn trống'
             ], 400);
         }
 
-        // Lấy danh sách các ghế đã được đặt cho chuyến xe này
-        $alreadyBookedSeats = Booking::where('trip_id', $request->trip_id)
-            ->whereIn('status', ['confirmed', 'pending']) // Chỉ xem các booking đã xác nhận hoặc đang chờ
+        // Tối ưu: Sử dụng query để kiểm tra ghế đã đặt mà không tải toàn bộ danh sách vào bộ nhớ
+        $duplicateSeatsQuery = Booking::where('trip_id', $request->trip_id)
+            ->whereIn('status', ['confirmed', 'pending'])
+            ->where(function ($query) use ($requestedSeats) {
+                foreach ($requestedSeats as $seat) {
+                    $query->orWhereRaw('FIND_IN_SET(?, seat_numbers)', [$seat]);
+                }
+            })
             ->pluck('seat_numbers')
             ->flatMap(function ($seats) {
                 return explode(',', $seats);
             })
+            ->intersect($requestedSeats)
+            ->unique()
             ->toArray();
-        // Tìm các ghế trùng lặp
-        $duplicateSeats = array_intersect($requestedSeats, $alreadyBookedSeats);
 
-        if (!empty($duplicateSeats)) {
-            // Nếu có ghế trùng lặp, trả về lỗi
+        if (!empty($duplicateSeatsQuery)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Các ghế sau đã được đặt: ' . implode(', ', $duplicateSeats),
-                'booked_seats' => $duplicateSeats
-            ], 409); // Sử dụng mã 409 Conflict hoặc 400 Bad Request
+                'message' => 'Các ghế sau đã được đặt: ' . implode(', ', $duplicateSeatsQuery),
+                'booked_seats' => $duplicateSeatsQuery
+            ], 409);
         }
 
-        // Kiểm tra điểm đón có thuộc tuyến của chuyến xe không
         $pickupPoint = PickupPoint::find($request->pickup_point_id);
         if (!$pickupPoint || $pickupPoint->route_id !== $trip->route_id) {
             return response()->json([
@@ -150,57 +151,52 @@ class BookingController extends Controller
         DB::beginTransaction();
         try {
             $totalAmount = $trip->ticket_price * $seatCount;
-            $isBanking = $request->payment_method === 'banking';
 
-            // 1. Tạo booking (Trạng thái phụ thuộc vào phương thức thanh toán)
             $booking = Booking::create([
-                'user_id'         => Auth::id(),
-                'trip_id'         => $request->trip_id,
+                'user_id' => Auth::id(),
+                'trip_id' => $request->trip_id,
                 'pickup_point_id' => $request->pickup_point_id,
-                'seat_numbers'    => $request->seat_numbers,
-                'passenger_name'  => $request->passenger_name,
+                'seat_numbers' => $request->seat_numbers,
+                'passenger_name' => $request->passenger_name,
                 'passenger_phone' => $request->passenger_phone,
-                'total_amount'    => (int)$totalAmount,
-                'payment_method'  => $request->payment_method,
-                'status'          => 'pending',
+                'total_amount' => (int) $totalAmount,
+                'payment_method' => $request->payment_method,
+                'status' => 'pending',
                 'payment_status' => 'pending',
-
             ]);
-            // 4. GỌI PAYOS
-            if ($isBanking) {
-                $payOS = new PayOS(
-                    "3e060d4a-172b-45fb-97bf-e047f0149a19",
-                    "3608d2ef-6cdf-4747-a7bb-37590cdbacc4",
-                    "8a6f1ac5287ae84889617220d2b93c98df79e8ab7e3ff5ecf486fb964971ed3c",
-                );
 
-                $paymentData = [
-                    "orderCode"   => (int) $booking->booking_code,
-                    "amount"      => (int) $totalAmount,
-                    "description" => "THANH TOAN VE XE",
-                    "returnUrl"   => env('FRONTEND_URL') . "/payment-success?orderCode={$booking->booking_code}",
-                    "cancelUrl"   => env('FRONTEND_URL') . "/payment-cancel?orderCode={$booking->booking_code}",
-                    "items" => [
-                        [
-                            "name" => "Mã đặt vé xe: {$booking->booking_code}",
-                            "quantity" => 1,
-                            "price" => (int) $totalAmount
-                        ]
+            // Khởi tạo PayOS chỉ khi cần (đã kiểm tra payment_method là banking)
+            $payOS = new PayOS(
+                "3e060d4a-172b-45fb-97bf-e047f0149a19",
+                "3608d2ef-6cdf-4747-a7bb-37590cdbacc4",
+                "8a6f1ac5287ae84889617220d2b93c98df79e8ab7e3ff5ecf486fb964971ed3c"
+            );
+
+            $paymentData = [
+                "orderCode" => (int) $booking->booking_code,
+                "amount" => (int) $totalAmount,
+                "description" => "THANH TOAN VE XE",
+                "returnUrl" => env('FRONTEND_URL') . "/payment-success?orderCode={$booking->booking_code}",
+                "cancelUrl" => env('FRONTEND_URL') . "/payment-cancel?orderCode={$booking->booking_code}",
+                "items" => [
+                    [
+                        "name" => "Mã đặt vé xe: {$booking->booking_code}",
+                        "quantity" => 1,
+                        "price" => (int) $totalAmount
                     ]
-                ];
-                try {
-                    $paymentLinkResponse = $payOS->createPaymentLink($paymentData);
-                    $checkoutUrl = $paymentLinkResponse['checkoutUrl'];
-                } catch (\Exception $e) {
-                    throw new \Exception("Lỗi kết nối cổng thanh toán: " . $e->getMessage());
-                }
-            }
+                ]
+            ];
+
+            $paymentLinkResponse = $payOS->createPaymentLink($paymentData);
+            $checkoutUrl = $paymentLinkResponse['checkoutUrl'];
+
             DB::commit();
+
             return response()->json([
                 'success' => true,
                 'message' => 'Vui lòng quét mã để thanh toán',
                 'data' => [
-                    'checkoutUrl' => $checkoutUrl // Trả link này về cho React
+                    'checkoutUrl' => $checkoutUrl
                 ]
             ], 201);
         } catch (\Exception $e) {
@@ -225,7 +221,7 @@ class BookingController extends Controller
         }
 
         // Kiểm tra quyền: user chỉ cập nhật booking của mình
-        if (Auth::check() && Auth::user()->role !== 'admin' && $booking->user_id != Auth::id()) {
+        if (Auth::check() && Auth::user()->role !== 'admin' && $booking->user_id !== Auth::id()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Không có quyền cập nhật booking này'
@@ -233,11 +229,11 @@ class BookingController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'status' => 'sometimes|in:pending,confirmed,cancelled,completed',
-            'payment_status' => 'sometimes|in:pending,paid,refunded,failed',
+            'status' => 'sometimes|in:pending,confirmed,cancelled',
+            'payment_status' => 'sometimes|in:pending,paid,refunded',
             'passenger_name' => 'sometimes|string|max:255',
             'passenger_phone' => 'sometimes|string|max:20',
-            'payment_method' => 'sometimes|in:cash,banking,momo',
+            'payment_method' => 'sometimes|in:banking',
         ]);
 
         if ($validator->fails()) {
@@ -251,12 +247,7 @@ class BookingController extends Controller
         DB::beginTransaction();
         try {
             // Xử lý hủy booking: hoàn lại ghế
-            if (
-                $request->has('status') && $request->status === 'cancelled' &&
-                $booking->status !== 'cancelled'
-            ) {
-
-                // Hoàn lại số ghế cho chuyến xe
+            if ($request->has('status') && $request->status === 'cancelled' && $booking->status !== 'cancelled') {
                 $seatCount = count(explode(',', $booking->seat_numbers));
                 $trip = Trip::find($booking->trip_id);
                 if ($trip) {
@@ -264,7 +255,6 @@ class BookingController extends Controller
                     $trip->save();
                 }
             }
-
             // Cập nhật booking
             $booking->update($request->only([
                 'status',
@@ -292,9 +282,7 @@ class BookingController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-
             Log::error('Update booking error: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Có lỗi xảy ra khi cập nhật'
@@ -352,15 +340,14 @@ class BookingController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-
             Log::error('Delete booking error: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'Có lỗi xảy ra khi xóa booking'
             ], 500);
         }
     }
+
     /**
      * Lấy danh sách booking của user hiện tại
      */
@@ -399,23 +386,23 @@ class BookingController extends Controller
         // Tạo danh sách ghế linh hoạt theo số ghế thực tế
         $allSeats = [];
         $totalSeats = $trip->bus->total_seats;
-
         $rows = range('A', 'Z');
         $seatsPerRow = 4;
-
         $seatCount = 0;
+
         foreach ($rows as $row) {
             for ($seatNum = 1; $seatNum <= $seatsPerRow; $seatNum++) {
-                if ($seatCount >= $totalSeats) break 2;
-
+                if ($seatCount >= $totalSeats) {
+                    break 2;
+                }
                 $allSeats[] = $row . $seatNum;
                 $seatCount++;
             }
         }
 
-        // Lấy ghế đã đặt
+        // Lấy ghế đã đặt (tối ưu: sử dụng pluck và flatMap)
         $bookedSeats = Booking::where('trip_id', $tripId)
-            ->whereIn('status', ['confirmed', 'pending'])
+            ->whereIn('status', ['confirmed'])
             ->pluck('seat_numbers')
             ->flatMap(function ($seats) {
                 return explode(',', $seats);
@@ -442,7 +429,7 @@ class BookingController extends Controller
     /**
      * Tạo layout ghế linh hoạt theo loại xe
      */
-    private function generateFlexibleSeatLayout($allSeats, $bookedSeats, $busType)
+    private function generateFlexibleSeatLayout(array $allSeats, array $bookedSeats, string $busType): array
     {
         $layout = [];
         $currentRow = '';
@@ -463,7 +450,6 @@ class BookingController extends Controller
                 $rowSeats = [];
             }
 
-            // Xác định loại ghế theo vị trí
             $seatType = $this->getSeatType($number, $busType);
 
             $rowSeats[] = [
@@ -487,13 +473,13 @@ class BookingController extends Controller
     /**
      * Xác định loại ghế
      */
-    private function getSeatType($seatNumber, $busType)
+    private function getSeatType(int $seatNumber, string $busType): string
     {
         if ($busType === 'sleeper') {
             return $seatNumber <= 2 ? 'lower_berth' : 'upper_berth';
-        } else {
-            return 'standard';
         }
+
+        return 'standard';
     }
 
     /**
@@ -534,12 +520,18 @@ class BookingController extends Controller
         ]);
     }
 
-    public function cancelPayment($booking_code)
+    /**
+     * Hủy thanh toán
+     */
+    public function cancelPayment($booking_code): JsonResponse
     {
         $booking = Booking::where('booking_code', $booking_code)->firstOrFail();
 
         if ($booking->payment_status !== 'pending') {
-            return;
+            return response()->json([
+                'success' => false,
+                'message' => 'Không thể hủy vì trạng thái không phải pending'
+            ], 400);
         }
 
         $booking->update([
