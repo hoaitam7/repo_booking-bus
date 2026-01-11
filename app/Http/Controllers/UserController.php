@@ -14,29 +14,8 @@ class UserController extends Controller
     {
         $query = User::query();
 
-        // Search
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('full_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('phone', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter by role
-        if ($request->has('role')) {
-            $query->where('role', $request->role);
-        }
-
-        // Order
-        $orderBy = $request->get('order_by', 'created_at');
-        $orderDirection = $request->get('order_direction', 'desc');
-        $query->orderBy($orderBy, $orderDirection);
-
         // Pagination
-        $perPage = $request->get('per_page', 5);
-        $users = $query->paginate($perPage);
+        $users = $query->paginate(10);
 
         return response()->json([
             'success' => true,
