@@ -7,6 +7,7 @@ use App\Models\Trip;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class SearchController extends Controller
 {
@@ -21,6 +22,7 @@ class SearchController extends Controller
             'departure_date' => 'required|date',
             'trip_type' => 'required|in:one_way,round_trip',
             'return_date' => 'required_if:trip_type,round_trip|date|after:departure_date',
+            //tùy chọn
             'bus_type' => 'nullable|in:sleeper,standard,premium',
             'departure_time_range' => 'nullable|in:morning,afternoon,evening',
         ]);
@@ -54,19 +56,31 @@ class SearchController extends Controller
                 });
             }
 
-            // Filter theo khung giờ
+            // Filter theo khung giờ - CHUẨN VIỆT NAM (GMT+7)
             if ($request->filled('departure_time_range')) {
                 $timeRange = $request->departure_time_range;
 
-                if ($timeRange === 'morning') {
-                    $departQuery->whereTime('departure_time', '>=', '06:00:00')
-                        ->whereTime('departure_time', '<=', '12:00:00');
-                } elseif ($timeRange === 'afternoon') {
-                    $departQuery->whereTime('departure_time', '>=', '13:00:00')
-                        ->whereTime('departure_time', '<=', '18:00:00');
-                } elseif ($timeRange === 'evening') {
-                    $departQuery->whereTime('departure_time', '>=', '19:00:00')
-                        ->whereTime('departure_time', '<=', '21:00:00');
+                // Giờ Việt Nam (Asia/Ho_Chi_Minh)
+                $timeRangesVN = [
+                    'morning' => ['06:00:00', '12:00:00'],    // 6h-12h VN
+                    'afternoon' => ['13:00:00', '18:00:00'],   // 13h-18h VN
+                    'evening' => ['19:00:00', '21:00:00'],     // 19h-21h VN
+                ];
+
+                if (isset($timeRangesVN[$timeRange])) {
+                    [$startTimeVN, $endTimeVN] = $timeRangesVN[$timeRange];
+
+                    // Convert giờ Việt Nam sang UTC để filter
+                    $startTimeUTC = Carbon::createFromFormat('H:i:s', $startTimeVN, 'Asia/Ho_Chi_Minh')
+                        ->setTimezone('UTC')
+                        ->format('H:i:s');
+
+                    $endTimeUTC = Carbon::createFromFormat('H:i:s', $endTimeVN, 'Asia/Ho_Chi_Minh')
+                        ->setTimezone('UTC')
+                        ->format('H:i:s');
+
+                    $departQuery->whereTime('departure_time', '>=', $startTimeUTC)
+                        ->whereTime('departure_time', '<=', $endTimeUTC);
                 }
             }
 
@@ -87,25 +101,36 @@ class SearchController extends Controller
                     ->where('status', 'scheduled')
                     ->where('available_seats', '>', 0);
 
-                // Áp dụng filter tương tự cho chuyến về
+                // Filter theo loại xe
                 if ($request->filled('bus_type')) {
                     $returnQuery->whereHas('bus', function ($q) use ($request) {
                         $q->where('bus_type', $request->bus_type);
                     });
                 }
 
+                // Filter theo khung giờ - CHUẨN VIỆT NAM
                 if ($request->filled('departure_time_range')) {
                     $timeRange = $request->departure_time_range;
 
-                    if ($timeRange === 'morning') {
-                        $returnQuery->whereTime('departure_time', '>=', '06:00:00')
-                            ->whereTime('departure_time', '<=', '12:00:00');
-                    } elseif ($timeRange === 'afternoon') {
-                        $returnQuery->whereTime('departure_time', '>=', '13:00:00')
-                            ->whereTime('departure_time', '<=', '18:00:00');
-                    } elseif ($timeRange === 'evening') {
-                        $returnQuery->whereTime('departure_time', '>=', '19:00:00')
-                            ->whereTime('departure_time', '<=', '21:00:00');
+                    $timeRangesVN = [
+                        'morning' => ['06:00:00', '12:00:00'],
+                        'afternoon' => ['13:00:00', '18:00:00'],
+                        'evening' => ['19:00:00', '21:00:00'],
+                    ];
+
+                    if (isset($timeRangesVN[$timeRange])) {
+                        [$startTimeVN, $endTimeVN] = $timeRangesVN[$timeRange];
+
+                        $startTimeUTC = Carbon::createFromFormat('H:i:s', $startTimeVN, 'Asia/Ho_Chi_Minh')
+                            ->setTimezone('UTC')
+                            ->format('H:i:s');
+
+                        $endTimeUTC = Carbon::createFromFormat('H:i:s', $endTimeVN, 'Asia/Ho_Chi_Minh')
+                            ->setTimezone('UTC')
+                            ->format('H:i:s');
+
+                        $returnQuery->whereTime('departure_time', '>=', $startTimeUTC)
+                            ->whereTime('departure_time', '<=', $endTimeUTC);
                     }
                 }
 
@@ -125,6 +150,7 @@ class SearchController extends Controller
                 ]
             ]);
         }
+
         // Format response chỉ với data cần thiết
         $responseData = [
             'success' => true,
@@ -141,5 +167,15 @@ class SearchController extends Controller
         }
 
         return response()->json($responseData);
+    }
+
+    /**
+     * Helper function để convert giờ VN sang UTC
+     */
+    private function convertVNTimeToUTC($timeVN)
+    {
+        return Carbon::createFromFormat('H:i:s', $timeVN, 'Asia/Ho_Chi_Minh')
+            ->setTimezone('UTC')
+            ->format('H:i:s');
     }
 }

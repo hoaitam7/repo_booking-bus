@@ -93,7 +93,7 @@ class UserController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'full_name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
+            'email' => 'sometimes|required|email',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',
             'role' => 'sometimes|in:admin,user,moderator',
@@ -124,10 +124,21 @@ class UserController extends Controller
             ]
         ]);
     }
-    public function destroy(User $user): JsonResponse
+    public function destroy($id): JsonResponse
     {
+        // Tìm user theo ID
+        $user = User::find($id);
+
+        // Kiểm tra user có tồn tại không
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User không tồn tại'
+            ], 404);
+        }
+
         // Prevent self-deletion
-        if (auth()->id() === $user->id) {
+        if (auth()->id() === (int)$id) {
             return response()->json([
                 'success' => false,
                 'message' => 'Không thể xóa tài khoản của chính mình'
@@ -135,7 +146,6 @@ class UserController extends Controller
         }
 
         $user->delete();
-
         return response()->json([
             'success' => true,
             'message' => 'Xóa user thành công'
