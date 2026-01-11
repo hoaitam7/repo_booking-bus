@@ -176,8 +176,8 @@ class BookingController extends Controller
                 "orderCode" => (int) $booking->booking_code,
                 "amount" => (int) $totalAmount,
                 "description" => "THANH TOAN VE XE",
-                "returnUrl" => env('FRONTEND_URL') . "/payment-success?orderCode={$booking->booking_code}",
-                "cancelUrl" => env('FRONTEND_URL') . "/payment-cancel?orderCode={$booking->booking_code}",
+                "returnUrl" => "https://bus-ecommerce-blond.vercel.app" . "/payment-success?orderCode={$booking->booking_code}",
+                "cancelUrl" => "https://bus-ecommerce-blond.vercel.app" . "/payment-cancel?orderCode={$booking->booking_code}",
                 "items" => [
                     [
                         "name" => "Mã đặt vé xe: {$booking->booking_code}",
