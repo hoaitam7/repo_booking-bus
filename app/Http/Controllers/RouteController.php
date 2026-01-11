@@ -88,12 +88,27 @@ class RouteController extends Controller
      */
     public function index(): JsonResponse
     {
-        $routes = Route::all();
+        try {
+            $routes = Route::paginate(10);
 
-        return response()->json([
-            'success' => true,
-            'data' => $routes
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $routes->items(),
+                'pagination' => [
+                    'total' => $routes->total(),
+                    'per_page' => $routes->perPage(),
+                    'current_page' => $routes->currentPage(),
+                    'last_page' => $routes->lastPage(),
+                    'from' => $routes->firstItem(),
+                    'to' => $routes->lastItem()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch routes.'
+            ], 500);
+        }
     }
 
     /**

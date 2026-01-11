@@ -15,18 +15,25 @@ class BusController extends Controller
     public function index(): JsonResponse
     {
         try {
-            $buses = Bus::orderBy('created_at', 'desc')->get();
+            $buses = Bus::orderBy('created_at', 'desc')->paginate(10);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Lấy danh sách xe buýt thành công',
-                'data' => $buses
+                'data' => $buses->items(),
+                'pagination' => [
+                    'total' => $buses->total(),
+                    'per_page' => $buses->perPage(),
+                    'current_page' => $buses->currentPage(),
+                    'last_page' => $buses->lastPage(),
+                    'from' => $buses->firstItem(),
+                    'to' => $buses->lastItem()
+                ]
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi server',
-                'error' => $e->getMessage()
+                'message' => 'Lỗi server'
             ], 500);
         }
     }
@@ -47,7 +54,7 @@ class BusController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi xác thực',
+                'message' => 'Lỗi request sai data',
                 'errors' => $validator->errors()
             ], 422);
         }
