@@ -38,38 +38,22 @@ class TripController extends Controller
     /**
      * Lấy danh sách chuyến đi (cho admin)
      */
-    public function index(Request $request): JsonResponse
+    public function index(): JsonResponse
     {
-        $query = Trip::with(['route', 'bus']);
+        // Lấy thời điểm hiện tại
+        $now = Carbon::now();
 
-        // Filter theo ngày
-        if ($request->has('date')) {
-            $date = Carbon::parse($request->date)->startOfDay();
-            $query->whereDate('departure_time', $date);
-        }
+        $query = Trip::with(['route', 'bus'])
+            // Thêm điều kiện: thời gian khởi hành phải lớn hơn hoặc bằng hiện tại
+            ->where('departure_time', '>=', $now);
 
-        // Filter theo route
-        if ($request->has('route_id')) {
-            $query->where('route_id', $request->route_id);
-        }
-
-        // Filter theo status
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Chỉ lấy chuyến tương lai (cho user)
-        if ($request->has('upcoming') && $request->upcoming == true) {
-            $query->where('departure_time', '>=', now())
-                ->where('status', 'scheduled');
-        }
         $trips = $query->orderBy('departure_time', 'asc')->paginate(10);
+
         return response()->json([
             'success' => true,
             'data' => $trips
         ]);
     }
-
     /**
      * Tạo 1 chuyến đơn lẻ (cho admin)
      */
