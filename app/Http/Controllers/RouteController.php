@@ -86,27 +86,31 @@ class RouteController extends Controller
     /**
      * Lấy danh sách tất cả các tuyến đường
      */
+
     public function index(): JsonResponse
     {
         try {
-            $routes = Route::paginate(10);
+            // latest() mặc định sắp xếp theo 'created_at' giảm dần (mới nhất lên đầu)
+            $routes = Route::latest()->paginate(10);
 
             return response()->json([
                 'success' => true,
-                'data' => $routes->items(),
+                'data' => $routes->items(), // Lấy mảng dữ liệu các tuyến đường
+                'current_page' => $routes->currentPage(),
+                'last_page' => $routes->lastPage(),
+                'total' => $routes->total(),
+                'per_page' => $routes->perPage(),
                 'pagination' => [
                     'total' => $routes->total(),
                     'per_page' => $routes->perPage(),
                     'current_page' => $routes->currentPage(),
                     'last_page' => $routes->lastPage(),
-                    'from' => $routes->firstItem(),
-                    'to' => $routes->lastItem()
                 ]
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch routes.'
+                'message' => 'Lỗi khi lấy danh sách tuyến đường: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -155,8 +159,6 @@ class RouteController extends Controller
 
         try {
             $imgUrl = null;
-
-            // 2. Nếu có file thì upload lên Cloudinary
             if ($request->hasFile('image')) {
                 // 'bus_routes' là tên thư mục trên Cloudinary
                 $uploadResult = Cloudinary::upload($request->file('image')->getRealPath(), [
@@ -166,7 +168,6 @@ class RouteController extends Controller
                 // Lấy link CDN ảnh
                 $imgUrl = $uploadResult->getSecurePath();
             }
-
             // 3. Lưu vào Database
             $route = Route::create([
                 'from_city' => $request->from_city,

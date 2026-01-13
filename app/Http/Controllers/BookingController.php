@@ -362,7 +362,6 @@ class BookingController extends Controller
             ->where('user_id', $userId)
             ->orderByDesc('created_at')
             ->paginate(10);
-
         return response()->json([
             'success' => true,
             'data' => $bookings

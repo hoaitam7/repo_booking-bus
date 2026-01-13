@@ -72,11 +72,9 @@ class SearchController extends Controller
 
                     // Convert giờ Việt Nam sang UTC để filter
                     $startTimeUTC = Carbon::createFromFormat('H:i:s', $startTimeVN, 'Asia/Ho_Chi_Minh')
-                        ->setTimezone('UTC')
                         ->format('H:i:s');
 
                     $endTimeUTC = Carbon::createFromFormat('H:i:s', $endTimeVN, 'Asia/Ho_Chi_Minh')
-                        ->setTimezone('UTC')
                         ->format('H:i:s');
 
                     $departQuery->whereTime('departure_time', '>=', $startTimeUTC)

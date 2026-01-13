@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Mail\Message;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 
 class AuthController extends Controller
@@ -107,8 +108,8 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Lỗi xác thực',
-                'errors' => $validator->errors()
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors' => $validator->errors() // Trả về để React log ra console
             ], 422);
         }
         $user = $request->user();
