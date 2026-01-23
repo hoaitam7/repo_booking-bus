@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Route;
+use App\Models\PickupPoint;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -176,6 +177,17 @@ class RouteController extends Controller
                 'duration'  => $request->duration,
                 'price'     => $request->price,
                 'img_url'   => $imgUrl, // Nếu ko có file, giá trị này sẽ là null
+            ]);
+
+            // 4. Tạo điểm đón mặc định dựa trên điểm khởi hành
+            $defaultStationName = $request->from_city === 'TP HCM'
+                ? 'Bến xe miền Tây'
+                : 'Bến xe trung tâm tỉnh';
+
+            PickupPoint::create([
+                'route_id' => $route->id,
+                'name' => $defaultStationName,
+                'address' => $request->from_city,
             ]);
 
             return response()->json([
