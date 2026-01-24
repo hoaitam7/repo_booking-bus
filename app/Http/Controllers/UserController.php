@@ -68,11 +68,19 @@ class UserController extends Controller
             ]
         ]);
     }
-    public function update(Request $request, User $user): JsonResponse
+    public function update(Request $request, int $id): JsonResponse
     {
+        $user = User::find($id);
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User không tồn tại'
+            ], 404);
+        }
+
         $validator = Validator::make($request->all(), [
             'full_name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|email',
+            'email' => 'sometimes|required|email|unique:users,email,' . $id,
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:500',
             'role' => 'sometimes|in:admin,user,moderator',
@@ -87,22 +95,23 @@ class UserController extends Controller
             ], 422);
         }
 
-        $data = $request->all();
+        $validated = $validator->validated();
 
         if ($request->has('password')) {
-            $data['password'] = Hash::make($request->password);
+            $validated['password'] = Hash::make($request->password);
         }
 
-        $user->update($data);
+        $user->update($validated);
 
         return response()->json([
             'success' => true,
             'message' => 'Cập nhật user thành công',
             'data' => [
-                'user' => $user
+                'user' => $user->only(['id', 'full_name', 'email', 'phone', 'address', 'role'])
             ]
         ]);
     }
+
     public function destroy($id): JsonResponse
     {
         // Tìm user theo ID
