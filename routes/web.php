@@ -12,6 +12,7 @@ use App\Http\Controllers\TripController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ChatController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,6 +48,8 @@ Route::get('/clear', function () {
 // PUBLIC ROUTES (Không cần đăng nhập)
 // =========================================================================
 
+
+Route::post('/chat', [ChatController::class, 'chat']);
 // -------------------------------------------------------------------------
 // Authentication
 // -------------------------------------------------------------------------
