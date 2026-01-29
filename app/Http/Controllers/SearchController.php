@@ -70,7 +70,7 @@ class SearchController extends Controller
                 if (isset($timeRangesVN[$timeRange])) {
                     [$startTimeVN, $endTimeVN] = $timeRangesVN[$timeRange];
 
-                    // Convert giờ Việt Nam sang UTC để filter
+               
                     $startTimeUTC = Carbon::createFromFormat('H:i:s', $startTimeVN, 'Asia/Ho_Chi_Minh')
                         ->format('H:i:s');
 
