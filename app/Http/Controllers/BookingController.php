@@ -118,7 +118,7 @@ class BookingController extends Controller
 
         // Tối ưu: Sử dụng query để kiểm tra ghế đã đặt mà không tải toàn bộ danh sách vào bộ nhớ
         $duplicateSeatsQuery = Booking::where('trip_id', $request->trip_id)
-            ->whereIn('status', ['confirmed', 'pending'])
+            ->whereIn('status', ['confirmed', 'pending']) //ktpm
             ->where(function ($query) use ($requestedSeats) {
                 foreach ($requestedSeats as $seat) {
                     $query->orWhereRaw('FIND_IN_SET(?, seat_numbers)', [$seat]);
